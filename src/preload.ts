@@ -1,2 +1,9 @@
-// See the Electron documentation for details on how to use preload scripts:
-// https://www.electronjs.org/docs/latest/tutorial/process-model#preload-scripts
+import { contextBridge, ipcRenderer } from 'electron';
+
+contextBridge.exposeInMainWorld('electron', {
+  auth: {
+    startOAuth: (provider: string) => ipcRenderer.invoke('auth:start', provider),
+    signOut: () => ipcRenderer.invoke('auth:signout'),
+    getStatus: () => ipcRenderer.invoke('auth:status'),
+  },
+});

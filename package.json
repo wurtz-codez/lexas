@@ -6,6 +6,7 @@
   "main": ".vite/build/main.js",
   "private": true,
   "scripts": {
+    "postinstall": "electron-rebuild -o better-sqlite3 -f",
     "start": "electron-forge start",
     "package": "electron-forge package",
     "make": "electron-forge make",
@@ -29,6 +30,7 @@
     "@electron-forge/plugin-vite": "^7.11.2",
     "@electron/fuses": "^1.8.0",
     "@tailwindcss/postcss": "^4.3.2",
+    "@types/better-sqlite3": "^7.6.13",
     "@types/electron-squirrel-startup": "^1.0.2",
     "@types/react": "^19.2.17",
     "@types/react-dom": "^19.2.3",
@@ -45,8 +47,10 @@
   },
   "dependencies": {
     "@tanstack/react-query": "^5.101.2",
+    "better-sqlite3": "^12.11.1",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
+    "dotenv": "^17.4.2",
     "electron-squirrel-startup": "^1.0.1",
     "lucide-react": "^1.24.0",
     "motion": "^12.42.2",
