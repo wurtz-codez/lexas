@@ -138,6 +138,7 @@ lexas/
 | ----------- | -------------------------- | ---------------------------------- |
 | `start`     | `electron-forge start`     | Launch app in development mode     |
 | `postinstall`| `electron-rebuild ...`    | Rebuild native modules for Electron |
+| `reset-db`  | `rm -rf .../data/`         | Delete all local data (fresh start) |
 | `package`   | `electron-forge package`   | Package app for current platform    |
 | `make`      | `electron-forge make`      | Create platform installers          |
 | `publish`   | `electron-forge publish`   | Publish packaged app                |
@@ -148,8 +149,8 @@ lexas/
 ## Git State
 
 - **Branch:** main
-- **Commits:** 4 (AUTH: Added authentication using google OAuth with gmail and calendar permissions.) [latest: `d6c9cda`]
-- **Last Updated:** 2026-07-14
+- **Commits:** 5 (CONTEXT-SETUP: context setup feature is running such that the data of the user at the time of onboarding is being stored and is changeable later too.) [latest: `cfbba80`]
+- **Last Updated:** 2026-07-15
 
 ---
 

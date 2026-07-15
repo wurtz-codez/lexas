@@ -31,7 +31,7 @@ export default function App() {
   return (
     <QueryClientProvider client={queryClient}>
       <BrowserRouter>
-        <ThemeProvider defaultTheme="dark" storageKey="lexas-theme">
+        <ThemeProvider defaultTheme="light" storageKey="lexas-theme">
           {showOnboarding ? (
             <OnboardingFlow onDone={handleOnboardingDone} />
           ) : (

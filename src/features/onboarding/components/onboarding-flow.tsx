@@ -1,4 +1,4 @@
-import { useState, useCallback, type KeyboardEvent, useRef } from 'react';
+import { useState, useCallback, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -47,12 +47,7 @@ export function OnboardingFlow({ onDone }: { onDone: () => void }) {
     }
   };
 
-  const onKeyDown = (e: KeyboardEvent) => {
-    if (e.key === 'Enter' && !e.shiftKey) {
-      e.preventDefault();
-      advance();
-    }
-  };
+
 
   return (
     <div className="flex min-h-screen flex-col items-center justify-center bg-background p-4">

@@ -8,6 +8,7 @@
   "scripts": {
     "postinstall": "electron-rebuild -o better-sqlite3 -f",
     "start": "electron-forge start",
+    "reset-db": "rm -rf $HOME/Library/Application\\ Support/lexas/data/",
     "package": "electron-forge package",
     "make": "electron-forge make",
     "publish": "electron-forge publish",
