@@ -6,4 +6,9 @@ contextBridge.exposeInMainWorld('electron', {
     signOut: () => ipcRenderer.invoke('auth:signout'),
     getStatus: () => ipcRenderer.invoke('auth:status'),
   },
+  onboarding: {
+    save: (data: unknown) => ipcRenderer.invoke('onboarding:save', data),
+    setCompleted: () => ipcRenderer.invoke('onboarding:setCompleted'),
+    getStatus: () => ipcRenderer.invoke('onboarding:getStatus'),
+  },
 });

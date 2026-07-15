@@ -9,10 +9,12 @@ const SCHEMA = `
 PRAGMA foreign_keys = ON;
 
 CREATE TABLE IF NOT EXISTS user_context (
-    id            INTEGER PRIMARY KEY CHECK (id = 1),
-    role          TEXT,
-    focus_summary TEXT,
-    updated_at    TEXT DEFAULT CURRENT_TIMESTAMP
+    id                  INTEGER PRIMARY KEY CHECK (id = 1),
+    display_name        TEXT,
+    role                TEXT,
+    focus_summary       TEXT,
+    onboarding_completed INTEGER NOT NULL DEFAULT 0,
+    updated_at          TEXT DEFAULT CURRENT_TIMESTAMP
 );
 
 CREATE TABLE IF NOT EXISTS people (
@@ -109,6 +111,19 @@ CREATE TABLE IF NOT EXISTS auth_tokens (
 );
 `;
 
+function runMigrations(database: Database.Database): void {
+  const existing = database.prepare(
+    "SELECT name FROM pragma_table_info('user_context') WHERE name = ?",
+  );
+
+  if (!existing.get('display_name')) {
+    database.exec("ALTER TABLE user_context ADD COLUMN display_name TEXT");
+  }
+  if (!existing.get('onboarding_completed')) {
+    database.exec("ALTER TABLE user_context ADD COLUMN onboarding_completed INTEGER NOT NULL DEFAULT 0");
+  }
+}
+
 export function getDb(): Database.Database {
   if (!db) {
     throw new Error('Database not initialized. Call initDatabase() first.');
@@ -131,6 +146,8 @@ export function initDatabase(): Database.Database {
     db.pragma('foreign_keys = ON');
 
     db.exec(SCHEMA);
+
+    runMigrations(db);
 
     process.stderr.write(`[DB] Initialized at ${dbPath}\n`);
   } catch (err) {

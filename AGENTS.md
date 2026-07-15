@@ -148,7 +148,7 @@ lexas/
 ## Git State
 
 - **Branch:** main
-- **Commits:** 3 (SETUP: setup complete with tailwind, zustand and etc.) [latest: `3b12ca7`]
+- **Commits:** 4 (AUTH: Added authentication using google OAuth with gmail and calendar permissions.) [latest: `d6c9cda`]
 - **Last Updated:** 2026-07-14
 
 ---

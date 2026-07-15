@@ -4,6 +4,7 @@ import path from 'node:path';
 import started from 'electron-squirrel-startup';
 import { initDatabase, closeDatabase } from './services/database';
 import { registerAuthHandlers } from './services/oauth-server';
+import { registerOnboardingHandlers } from './services/onboarding-server';
 
 if (started) {
   app.quit();
@@ -12,6 +13,7 @@ if (started) {
 app.on('ready', () => {
   initDatabase();
   registerAuthHandlers();
+  registerOnboardingHandlers();
   createWindow();
 });
 
