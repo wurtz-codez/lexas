@@ -4,6 +4,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { BrowserRouter } from 'react-router-dom';
 import { ThemeProvider } from '@/lib/theme-provider';
 import { RootLayout } from '@/components/layout/root-layout';
+import { Toaster } from '@/components/ui/sonner';
 import { AuthGate } from '@/features/auth/components/auth-gate';
 import { OnboardingFlow } from '@/features/onboarding/components/onboarding-flow';
 import type { OnboardingStatus } from '@/types';
@@ -39,6 +40,7 @@ export default function App() {
               <RootLayout onboarding={onboarding} />
             </AuthGate>
           )}
+          <Toaster />
         </ThemeProvider>
       </BrowserRouter>
     </QueryClientProvider>

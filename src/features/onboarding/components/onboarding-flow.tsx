@@ -2,7 +2,9 @@ import { useState, useCallback, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { X, Plus, CheckCircle } from 'lucide-react';
+import { Badge } from '@/components/ui/badge';
+import { Separator } from '@/components/ui/separator';
+import { X, CheckCircle, Save, ArrowRight } from 'lucide-react';
 import type { OnboardingData } from '@/types';
 
 const DOTS = 5;
@@ -288,54 +290,64 @@ function ProjectListStep({
     onChange(projects.filter((_, idx) => idx !== i));
   };
 
+  const hasSaved = projects.length > 0;
+
   return (
     <div className="flex flex-col gap-6">
       <h2 className="text-2xl font-semibold tracking-tight">{question}</h2>
-      <div className="flex gap-2">
-        <input
-          autoFocus
-          value={input}
-          onChange={(e) => setInput(e.target.value)}
-          onKeyDown={(e) => {
-            if (e.key === 'Enter') {
-              e.preventDefault();
-              if (input.trim()) {
+      <div className="flex flex-col gap-3">
+        <div className="flex gap-2">
+          <input
+            autoFocus
+            value={input}
+            onChange={(e) => setInput(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') {
+                e.preventDefault();
                 add();
-              } else {
-                onEnter();
               }
-            }
-          }}
-          placeholder="Type a project and press Enter"
-          className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
-        />
+            }}
+            placeholder="Type a project name"
+            className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+          />
+          <Button
+            type="button"
+            variant="outline"
+            onClick={add}
+            disabled={!input.trim()}
+            className="gap-2"
+          >
+            <Save className="size-4" />
+            Save
+          </Button>
+        </div>
         <Button
           type="button"
-          size="icon"
-          variant="outline"
-          onClick={add}
-          disabled={!input.trim()}
+          onClick={onEnter}
+          disabled={!hasSaved}
+          className="gap-2 w-full"
         >
-          <Plus className="size-4" />
+          Proceed
+          <ArrowRight className="size-4" />
         </Button>
       </div>
-      {projects.length > 0 && (
-        <div className="flex flex-wrap gap-2">
-          {projects.map((p, i) => (
-            <span
-              key={i}
-              className="inline-flex items-center gap-1.5 rounded-full border bg-secondary px-3 py-1 text-sm"
-            >
-              {p}
-              <button
-                onClick={() => remove(i)}
-                className="text-muted-foreground hover:text-foreground transition-colors"
-              >
-                <X className="size-3.5" />
-              </button>
-            </span>
-          ))}
-        </div>
+      {hasSaved && (
+        <>
+          <Separator />
+          <div className="flex flex-wrap gap-2">
+            {projects.map((p, i) => (
+              <Badge key={i} variant="secondary" className="gap-1.5 py-1.5 pl-3 pr-2 text-sm">
+                {p}
+                <button
+                  onClick={() => remove(i)}
+                  className="text-muted-foreground hover:text-foreground transition-colors ml-0.5"
+                >
+                  <X className="size-3.5" />
+                </button>
+              </Badge>
+            ))}
+          </div>
+        </>
       )}
     </div>
   );
@@ -367,78 +379,87 @@ function PeopleListStep({
     onChange(people.filter((_, idx) => idx !== i));
   };
 
+  const hasSaved = people.length > 0;
+
   return (
     <div className="flex flex-col gap-6">
       <h2 className="text-2xl font-semibold tracking-tight">{question}</h2>
       <p className="text-sm text-muted-foreground -mt-4">
         If an email from these people shows up, always flag it
       </p>
-      <div className="flex gap-2">
-        <input
-          autoFocus
-          value={name}
-          onChange={(e) => setName(e.target.value)}
-          onKeyDown={(e) => {
-            if (e.key === 'Enter') {
-              e.preventDefault();
-              if (name.trim()) {
+      <div className="flex flex-col gap-3">
+        <div className="flex flex-col gap-2 sm:flex-row">
+          <input
+            autoFocus
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') {
+                e.preventDefault();
                 add();
-              } else {
-                onEnter();
               }
-            }
-          }}
-          placeholder="Name"
-          className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
-        />
-        <input
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-          onKeyDown={(e) => {
-            if (e.key === 'Enter') {
-              e.preventDefault();
-              if (name.trim() || email.trim()) {
+            }}
+            placeholder="Name"
+            className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+          />
+          <input
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') {
+                e.preventDefault();
                 add();
-              } else {
-                onEnter();
               }
-            }
-          }}
-          placeholder="Email (optional)"
-          className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
-        />
+            }}
+            placeholder="Email (optional)"
+            className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+          />
+          <Button
+            type="button"
+            variant="outline"
+            onClick={add}
+            disabled={!name.trim()}
+            className="gap-2 shrink-0"
+          >
+            <Save className="size-4" />
+            Save
+          </Button>
+        </div>
         <Button
           type="button"
-          size="icon"
-          variant="outline"
-          onClick={add}
-          disabled={!name.trim()}
+          onClick={onEnter}
+          disabled={!hasSaved}
+          className="gap-2 w-full"
         >
-          <Plus className="size-4" />
+          Proceed
+          <ArrowRight className="size-4" />
         </Button>
       </div>
-      {people.length > 0 && (
-        <div className="space-y-2">
-          {people.map((p, i) => (
-            <div
-              key={i}
-              className="flex items-center justify-between rounded-lg border bg-card px-3 py-2 text-sm"
-            >
-              <div>
-                <span className="font-medium">{p.name}</span>
-                {p.email && (
-                  <span className="ml-2 text-muted-foreground">{p.email}</span>
-                )}
-              </div>
-              <button
-                onClick={() => remove(i)}
-                className="text-muted-foreground hover:text-foreground transition-colors"
+      {hasSaved && (
+        <>
+          <Separator />
+          <div className="space-y-2">
+            {people.map((p, i) => (
+              <div
+                key={i}
+                className="flex items-center justify-between rounded-lg border bg-card px-3 py-2 text-sm"
               >
-                <X className="size-3.5" />
-              </button>
-            </div>
-          ))}
-        </div>
+                <div>
+                  <span className="font-medium">{p.name}</span>
+                  {p.email && (
+                    <span className="ml-2 text-muted-foreground">{p.email}</span>
+                  )}
+                </div>
+                <button
+                  onClick={() => remove(i)}
+                  className="text-muted-foreground hover:text-foreground transition-colors"
+                >
+                  <X className="size-3.5" />
+                </button>
+              </div>
+            ))}
+          </div>
+        </>
       )}
     </div>
   );
