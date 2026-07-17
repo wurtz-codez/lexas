@@ -149,8 +149,8 @@ lexas/
 ## Git State
 
 - **Branch:** main
-- **Commits:** 6 (UI: Enhanced the welcome window UI with proper color and the typography.) [latest: `1888b6a`]
-- **Last Updated:** 2026-07-15
+- **Commits:** 7 (FIX: fixed the onboarding process data not saving bug.) [latest: `867f8bf`]
+- **Last Updated:** 2026-07-17
 
 ---
 
