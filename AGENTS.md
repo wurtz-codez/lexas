@@ -149,7 +149,7 @@ lexas/
 ## Git State
 
 - **Branch:** main
-- **Commits:** 7 (FIX: fixed the onboarding process data not saving bug.) [latest: `867f8bf`]
+- **Commits:** 8 (updated AGENTS.md file) [latest: `9416daf`]
 - **Last Updated:** 2026-07-17
 
 ---

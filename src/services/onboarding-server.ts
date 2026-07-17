@@ -5,8 +5,10 @@ import type { OnboardingData, OnboardingStatus } from '@/types';
 export function registerOnboardingHandlers(): void {
   ipcMain.handle('onboarding:save', (_event, data: OnboardingData) => {
     try {
-      process.stderr.write(`[onboarding:save] projects=${JSON.stringify(data.projects)} people=${JSON.stringify(data.people)}\n`);
+      process.stderr.write(`[onboarding:save] roles=${JSON.stringify(data.roles)} projects=${JSON.stringify(data.projects)} people=${JSON.stringify(data.people)}\n`);
       const db = getDb();
+
+      const rolesJson = JSON.stringify(data.roles);
 
       db.prepare(`
         INSERT INTO user_context (id, display_name, role, focus_summary, updated_at)
@@ -16,14 +18,17 @@ export function registerOnboardingHandlers(): void {
           role = excluded.role,
           focus_summary = excluded.focus_summary,
           updated_at = CURRENT_TIMESTAMP
-      `).run(data.displayName || null, data.role || null, data.focusSummary || null);
+      `).run(data.displayName || null, rolesJson, data.focusSummary || null);
       process.stderr.write('[onboarding:save] user_context OK\n');
 
       db.prepare('DELETE FROM projects').run();
-      const insertProject = db.prepare('INSERT INTO projects (name) VALUES (?)');
+      const insertProject = db.prepare('INSERT INTO projects (name, description) VALUES (?, ?)');
       let count = 0;
-      for (const name of data.projects) {
-        if (name.trim()) { insertProject.run(name.trim()); count++; }
+      for (const project of data.projects) {
+        if (project.name.trim()) {
+          insertProject.run(project.name.trim(), project.description.trim() || null);
+          count++;
+        }
       }
       process.stderr.write(`[onboarding:save] projects OK (${count} inserted)\n`);
 
@@ -73,17 +78,27 @@ export function registerOnboardingHandlers(): void {
       | undefined;
 
     const projects = db
-      .prepare('SELECT id, name FROM projects WHERE status = \'active\'')
-      .all() as { id: number; name: string }[];
+      .prepare('SELECT id, name, description FROM projects WHERE status = \'active\'')
+      .all() as { id: number; name: string; description: string | null }[];
 
     const people = db
       .prepare('SELECT id, name, email FROM people WHERE is_vip = 1')
       .all() as { id: number; name: string; email: string | null }[];
 
+    let roles: string[] = [];
+    if (row?.role) {
+      try {
+        const parsed = JSON.parse(row.role);
+        if (Array.isArray(parsed)) roles = parsed;
+      } catch {
+        roles = [row.role];
+      }
+    }
+
     return {
       completed: row ? row.onboarding_completed === 1 : false,
       displayName: row?.display_name ?? null,
-      role: row?.role ?? null,
+      roles,
       focusSummary: row?.focus_summary ?? null,
       projects,
       people,

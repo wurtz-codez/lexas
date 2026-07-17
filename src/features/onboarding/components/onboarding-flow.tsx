@@ -1,10 +1,11 @@
-import { useState, useCallback, useRef } from 'react';
+import { useState, useCallback } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
+import { Card, CardContent } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
-import { X, CheckCircle, Save, ArrowRight } from 'lucide-react';
+import { X, CheckCircle, Save, ArrowRight, Plus } from 'lucide-react';
 import type { OnboardingData } from '@/types';
 
 const DOTS = 5;
@@ -17,11 +18,20 @@ const STEP_QUESTIONS = [
   'Anything else I should know?',
 ] as const;
 
+const ROLE_OPTIONS = [
+  'Student',
+  'Founder / Cofounder',
+  'Freelancer',
+  'Job',
+  'Unemployed',
+  'Others',
+] as const;
+
 export function OnboardingFlow({ onDone }: { onDone: () => void }) {
   const [step, setStep] = useState(0);
   const [data, setData] = useState<OnboardingData>({
     displayName: '',
-    role: '',
+    roles: [],
     projects: [],
     people: [],
     focusSummary: '',
@@ -49,11 +59,8 @@ export function OnboardingFlow({ onDone }: { onDone: () => void }) {
     }
   };
 
-
-
   return (
     <div className="flex min-h-screen flex-col items-center justify-center bg-background p-4">
-      {/* progress dots */}
       <div className="fixed top-8 flex gap-1.5">
         {Array.from({ length: DOTS }).map((_, i) => (
           <div
@@ -69,7 +76,6 @@ export function OnboardingFlow({ onDone }: { onDone: () => void }) {
         ))}
       </div>
 
-      {/* step content */}
       <div className="w-full max-w-lg">
         <AnimatePresence mode="wait">
           <motion.div
@@ -86,26 +92,19 @@ export function OnboardingFlow({ onDone }: { onDone: () => void }) {
                   step === 0
                     ? data.displayName
                     : step === 1
-                      ? data.role
+                      ? data.roles
                       : step === 2
-                        ? ''
+                        ? data.projects
                         : step === 3
-                          ? ''
+                          ? data.people
                           : data.focusSummary
-                }
-                orValue={
-                  step === 2
-                    ? data.projects
-                    : step === 3
-                      ? data.people
-                      : undefined
                 }
                 onChange={(val) => {
                   setData((d) => {
-                    if (step === 2) return { ...d, projects: val as string[] };
+                    if (step === 2) return { ...d, projects: val as { name: string; description: string }[] };
                     if (step === 3) return { ...d, people: val as { name: string; email?: string }[] };
                     if (step === 0) return { ...d, displayName: val as string };
-                    if (step === 1) return { ...d, role: val as string };
+                    if (step === 1) return { ...d, roles: val as string[] };
                     if (step === 4) return { ...d, focusSummary: val as string };
                     return d;
                   });
@@ -120,7 +119,6 @@ export function OnboardingFlow({ onDone }: { onDone: () => void }) {
         </AnimatePresence>
       </div>
 
-      {/* skip / next */}
       {step < DOTS && (
         <p className="fixed bottom-8 text-center">
           <button
@@ -128,7 +126,7 @@ export function OnboardingFlow({ onDone }: { onDone: () => void }) {
             className="text-sm text-muted-foreground underline underline-offset-2 hover:text-foreground transition-colors"
           >
             {(step === 0 && data.displayName) ||
-            (step === 1 && data.role) ||
+            (step === 1 && data.roles.length > 0) ||
             (step === 2 && data.projects.length > 0) ||
             (step === 3 && data.people.length > 0) ||
             (step === 4 && data.focusSummary)
@@ -143,18 +141,27 @@ export function OnboardingFlow({ onDone }: { onDone: () => void }) {
 
 type StepProps = {
   question: string;
-  value: string;
-  orValue?: string[] | { name: string; email?: string }[];
-  onChange: (val: string | string[] | { name: string; email?: string }[]) => void;
+  value: string | string[] | { name: string; description: string }[] | { name: string; email?: string }[];
+  onChange: (val: string | string[] | { name: string; description: string }[] | { name: string; email?: string }[]) => void;
   onEnter: () => void;
   step: number;
 };
 
-function QuestionStep({ question, value, orValue, onChange, onEnter, step }: StepProps) {
+function QuestionStep({ question, value, onChange, onEnter, step }: StepProps) {
+  if (step === 1) {
+    return (
+      <RolesStep
+        roles={value as string[]}
+        onChange={onChange}
+        question={question}
+        onEnter={onEnter}
+      />
+    );
+  }
   if (step === 2) {
     return (
       <ProjectListStep
-        projects={orValue as string[]}
+        projects={value as { name: string; description: string }[]}
         onChange={onChange}
         question={question}
         onEnter={onEnter}
@@ -164,7 +171,7 @@ function QuestionStep({ question, value, orValue, onChange, onEnter, step }: Ste
   if (step === 3) {
     return (
       <PeopleListStep
-        people={orValue as { name: string; email?: string }[]}
+        people={value as { name: string; email?: string }[]}
         onChange={onChange}
         question={question}
         onEnter={onEnter}
@@ -174,7 +181,7 @@ function QuestionStep({ question, value, orValue, onChange, onEnter, step }: Ste
   if (step === 4) {
     return (
       <TextareaStep
-        value={value}
+        value={value as string}
         onChange={(v) => onChange(v)}
         question={question}
         onEnter={onEnter}
@@ -183,15 +190,11 @@ function QuestionStep({ question, value, orValue, onChange, onEnter, step }: Ste
   }
   return (
     <TextStep
-      value={value}
+      value={value as string}
       onChange={(v) => onChange(v)}
       question={question}
       onEnter={onEnter}
-      placeholder={
-        step === 0
-          ? 'e.g. Lucky or Wurtz'
-          : 'e.g. Founder building a fintech startup'
-      }
+      placeholder="e.g. Lucky or Wurtz"
     />
   );
 }
@@ -209,13 +212,10 @@ function TextStep({
   onEnter: () => void;
   placeholder?: string;
 }) {
-  const inputRef = useRef<HTMLInputElement>(null);
-
   return (
-    <div className="flex flex-col gap-6" onClick={() => inputRef.current?.focus()}>
+    <div className="flex flex-col gap-6">
       <h2 className="text-2xl font-semibold tracking-tight">{question}</h2>
       <Input
-        ref={inputRef}
         autoFocus
         value={value}
         onChange={(e) => onChange(e.target.value)}
@@ -232,36 +232,120 @@ function TextStep({
   );
 }
 
-function TextareaStep({
-  value,
+function RolesStep({
+  roles,
   onChange,
   question,
   onEnter,
 }: {
-  value: string;
-  onChange: (v: string) => void;
+  roles: string[];
+  onChange: (v: string[]) => void;
   question: string;
   onEnter: () => void;
 }) {
+  const [customRole, setCustomRole] = useState('');
+
+  const toggleRole = (role: string) => {
+    if (roles.includes(role)) {
+      onChange(roles.filter((r) => r !== role));
+    } else {
+      onChange([...roles, role]);
+    }
+  };
+
+  const addCustomRole = () => {
+    if (customRole.trim() && !roles.includes(customRole.trim())) {
+      onChange([...roles, customRole.trim()]);
+      setCustomRole('');
+    }
+  };
+
+  const shownRoles = roles.filter((r) => !(ROLE_OPTIONS as readonly string[]).includes(r));
+  const hasOthers = shownRoles.length > 0;
+
   return (
     <div className="flex flex-col gap-6">
       <h2 className="text-2xl font-semibold tracking-tight">{question}</h2>
       <p className="text-sm text-muted-foreground -mt-4">
-        Optional free-text for the LLM to consider
+        Select all that apply
       </p>
-      <textarea
-        autoFocus
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-        onKeyDown={(e) => {
-          if (e.key === 'Enter' && !e.shiftKey) {
-            e.preventDefault();
-            onEnter();
-          }
-        }}
-        placeholder="e.g. I'm heads-down on a fundraise this month"
-        className="flex min-h-[120px] w-full rounded-md border border-input bg-background px-3 py-2 text-base ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 md:text-sm resize-none"
-      />
+
+      <div className="flex flex-wrap gap-2">
+        {ROLE_OPTIONS.map((role) => {
+          const selected = roles.includes(role);
+          const isOthers = role === 'Others';
+          if (isOthers) return null;
+          return (
+            <button
+              key={role}
+              type="button"
+              onClick={() => toggleRole(role)}
+              className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm font-medium border transition-all ${
+                selected
+                  ? 'bg-primary text-primary-foreground border-primary'
+                  : 'border-border bg-card text-foreground hover:border-foreground/40'
+              }`}
+            >
+              {role}
+              {selected && <X className="size-3.5" />}
+            </button>
+          );
+        })}
+      </div>
+
+      {/* Custom role input */}
+      <div className="flex items-center gap-2">
+        <span className="inline-flex items-center px-3 py-1.5 rounded-full text-sm font-medium border border-dashed border-muted-foreground/40 text-muted-foreground shrink-0">
+          Others
+        </span>
+        <input
+          value={customRole}
+          onChange={(e) => setCustomRole(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter') {
+              e.preventDefault();
+              addCustomRole();
+            }
+          }}
+          placeholder="Type your role..."
+          className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+        />
+        <Button
+          type="button"
+          variant="outline"
+          onClick={addCustomRole}
+          disabled={!customRole.trim()}
+          size="icon"
+        >
+          <Plus className="size-4" />
+        </Button>
+      </div>
+
+      {hasOthers && (
+        <div className="flex flex-wrap gap-2">
+          {shownRoles.map((role) => (
+            <Badge key={role} variant="secondary" className="gap-1.5 py-1.5 pl-3 pr-2 text-sm">
+              {role}
+              <button
+                onClick={() => onChange(roles.filter((r) => r !== role))}
+                className="text-muted-foreground hover:text-foreground transition-colors ml-0.5"
+              >
+                <X className="size-3.5" />
+              </button>
+            </Badge>
+          ))}
+        </div>
+      )}
+
+      <Button
+        type="button"
+        onClick={onEnter}
+        disabled={roles.length === 0}
+        className="gap-2 w-full mt-2"
+      >
+        Proceed
+        <ArrowRight className="size-4" />
+      </Button>
     </div>
   );
 }
@@ -272,17 +356,19 @@ function ProjectListStep({
   question,
   onEnter,
 }: {
-  projects: string[];
-  onChange: (v: string[]) => void;
+  projects: { name: string; description: string }[];
+  onChange: (v: { name: string; description: string }[]) => void;
   question: string;
   onEnter: () => void;
 }) {
-  const [input, setInput] = useState('');
+  const [name, setName] = useState('');
+  const [description, setDescription] = useState('');
 
   const add = () => {
-    if (input.trim()) {
-      onChange([...projects, input.trim()]);
-      setInput('');
+    if (name.trim()) {
+      onChange([...projects, { name: name.trim(), description: description.trim() }]);
+      setName('');
+      setDescription('');
     }
   };
 
@@ -295,56 +381,74 @@ function ProjectListStep({
   return (
     <div className="flex flex-col gap-6">
       <h2 className="text-2xl font-semibold tracking-tight">{question}</h2>
-      <div className="flex flex-col gap-3">
-        <div className="flex gap-2">
-          <input
-            autoFocus
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter') {
-                e.preventDefault();
-                add();
-              }
-            }}
-            placeholder="Type a project name"
-            className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
-          />
-          <Button
-            type="button"
-            variant="outline"
-            onClick={add}
-            disabled={!input.trim()}
-            className="gap-2"
-          >
-            <Save className="size-4" />
-            Save
-          </Button>
-        </div>
+
+      <div className="flex flex-col gap-3 rounded-xl border bg-card p-4">
+        <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
+          Add a project
+        </p>
+        <input
+          autoFocus
+          value={name}
+          onChange={(e) => setName(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter') {
+              e.preventDefault();
+              add();
+            }
+          }}
+          placeholder="Project name"
+          className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+        />
+        <textarea
+          value={description}
+          onChange={(e) => setDescription(e.target.value)}
+          placeholder="Short description (optional)"
+          rows={2}
+          className="flex w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 resize-none"
+        />
         <Button
           type="button"
-          onClick={onEnter}
-          disabled={!hasSaved}
-          className="gap-2 w-full"
+          variant="outline"
+          onClick={add}
+          disabled={!name.trim()}
+          className="gap-2 self-start"
         >
-          Proceed
-          <ArrowRight className="size-4" />
+          <Save className="size-4" />
+          Save
         </Button>
       </div>
+
+      <Button
+        type="button"
+        onClick={onEnter}
+        disabled={!hasSaved}
+        className="gap-2 w-full"
+      >
+        Proceed
+        <ArrowRight className="size-4" />
+      </Button>
+
       {hasSaved && (
         <>
           <Separator />
-          <div className="flex flex-wrap gap-2">
+          <div className="space-y-2 max-h-[240px] overflow-y-auto">
             {projects.map((p, i) => (
-              <Badge key={i} variant="secondary" className="gap-1.5 py-1.5 pl-3 pr-2 text-sm">
-                {p}
+              <Card key={i} className="relative">
+                <CardContent className="p-3 pr-10">
+                  <div className="font-medium text-sm">{p.name}</div>
+                  {p.description && (
+                    <p className="text-xs text-muted-foreground mt-0.5 line-clamp-2">
+                      {p.description}
+                    </p>
+                  )}
+                </CardContent>
                 <button
                   onClick={() => remove(i)}
-                  className="text-muted-foreground hover:text-foreground transition-colors ml-0.5"
+                  className="absolute top-2 right-2 text-muted-foreground hover:text-foreground transition-colors"
                 >
                   <X className="size-3.5" />
                 </button>
-              </Badge>
+              </Card>
             ))}
           </div>
         </>
@@ -461,6 +565,40 @@ function PeopleListStep({
           </div>
         </>
       )}
+    </div>
+  );
+}
+
+function TextareaStep({
+  value,
+  onChange,
+  question,
+  onEnter,
+}: {
+  value: string;
+  onChange: (v: string) => void;
+  question: string;
+  onEnter: () => void;
+}) {
+  return (
+    <div className="flex flex-col gap-6">
+      <h2 className="text-2xl font-semibold tracking-tight">{question}</h2>
+      <p className="text-sm text-muted-foreground -mt-4">
+        Optional free-text for the LLM to consider
+      </p>
+      <textarea
+        autoFocus
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter' && !e.shiftKey) {
+            e.preventDefault();
+            onEnter();
+          }
+        }}
+        placeholder="e.g. I'm heads-down on a fundraise this month"
+        className="flex min-h-[120px] w-full rounded-md border border-input bg-background px-3 py-2 text-base ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 md:text-sm resize-none"
+      />
     </div>
   );
 }

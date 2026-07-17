@@ -23,8 +23,8 @@ export type TokenPair = {
 
 export type OnboardingData = {
   displayName: string;
-  role: string;
-  projects: string[];
+  roles: string[];
+  projects: { name: string; description: string }[];
   people: { name: string; email?: string }[];
   focusSummary: string;
 };
@@ -32,8 +32,8 @@ export type OnboardingData = {
 export type OnboardingStatus = {
   completed: boolean;
   displayName: string | null;
-  role: string | null;
-  projects: { id: number; name: string }[];
+  roles: string[];
+  projects: { id: number; name: string; description: string | null }[];
   people: { id: number; name: string; email: string | null }[];
   focusSummary: string | null;
 };

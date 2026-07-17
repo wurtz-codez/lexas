@@ -1,13 +1,25 @@
 import { useState, useEffect, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Badge } from '@/components/ui/badge';
+import { Card, CardContent } from '@/components/ui/card';
+import { Separator } from '@/components/ui/separator';
 import { X, Plus } from 'lucide-react';
 import type { OnboardingData } from '@/types';
+
+const ROLE_OPTIONS = [
+  'Student',
+  'Founder / Cofounder',
+  'Freelancer',
+  'Job',
+  'Unemployed',
+  'Others',
+] as const;
 
 export function ContextEditor({ onClose }: { onClose?: () => void }) {
   const [data, setData] = useState<OnboardingData>({
     displayName: '',
-    role: '',
+    roles: [],
     projects: [],
     people: [],
     focusSummary: '',
@@ -15,7 +27,9 @@ export function ContextEditor({ onClose }: { onClose?: () => void }) {
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
   const loaded = useRef(false);
-  const [newProject, setNewProject] = useState('');
+  const [customRole, setCustomRole] = useState('');
+  const [newProjectName, setNewProjectName] = useState('');
+  const [newProjectDesc, setNewProjectDesc] = useState('');
   const [newPersonName, setNewPersonName] = useState('');
   const [newPersonEmail, setNewPersonEmail] = useState('');
 
@@ -26,8 +40,8 @@ export function ContextEditor({ onClose }: { onClose?: () => void }) {
       loaded.current = true;
       setData({
         displayName: status.displayName || '',
-        role: status.role || '',
-        projects: status.projects.map((p) => p.name),
+        roles: status.roles || [],
+        projects: status.projects.map((p) => ({ name: p.name, description: p.description || '' })),
         people: status.people.map((p) => ({ name: p.name, email: p.email || undefined })),
         focusSummary: status.focusSummary || '',
       });
@@ -48,6 +62,53 @@ export function ContextEditor({ onClose }: { onClose?: () => void }) {
     }
   };
 
+  const toggleRole = (role: string) => {
+    if (data.roles.includes(role)) {
+      setData({ ...data, roles: data.roles.filter((r) => r !== role) });
+    } else {
+      setData({ ...data, roles: [...data.roles, role] });
+    }
+  };
+
+  const addCustomRole = () => {
+    if (customRole.trim() && !data.roles.includes(customRole.trim())) {
+      setData({ ...data, roles: [...data.roles, customRole.trim()] });
+      setCustomRole('');
+    }
+  };
+
+  const addProject = () => {
+    if (newProjectName.trim()) {
+      setData({
+        ...data,
+        projects: [
+          ...data.projects,
+          { name: newProjectName.trim(), description: newProjectDesc.trim() },
+        ],
+      });
+      setNewProjectName('');
+      setNewProjectDesc('');
+    }
+  };
+
+  const addPerson = () => {
+    if (newPersonName.trim()) {
+      setData({
+        ...data,
+        people: [
+          ...data.people,
+          { name: newPersonName.trim(), email: newPersonEmail.trim() || undefined },
+        ],
+      });
+      setNewPersonName('');
+      setNewPersonEmail('');
+    }
+  };
+
+  const customRoles = data.roles.filter(
+    (r) => !(ROLE_OPTIONS as readonly string[]).includes(r),
+  );
+
   return (
     <div className="mx-auto max-w-lg space-y-8 py-8">
       <div>
@@ -57,6 +118,7 @@ export function ContextEditor({ onClose }: { onClose?: () => void }) {
         </p>
       </div>
 
+      {/* Display Name */}
       <div className="space-y-1.5">
         <label className="text-sm font-medium">What should I call you?</label>
         <Input
@@ -66,61 +128,143 @@ export function ContextEditor({ onClose }: { onClose?: () => void }) {
         />
       </div>
 
-      <div className="space-y-1.5">
-        <label className="text-sm font-medium">What do you do?</label>
-        <Input
-          value={data.role}
-          onChange={(e) => setData({ ...data, role: e.target.value })}
-          placeholder="Role / title"
-        />
-      </div>
-
+      {/* Roles */}
       <div className="space-y-3">
-        <label className="text-sm font-medium">Projects you're working on</label>
+        <label className="text-sm font-medium">What do you do?</label>
+        <p className="text-xs text-muted-foreground -mt-2">
+          Select all that apply
+        </p>
+        <div className="flex flex-wrap gap-2">
+          {ROLE_OPTIONS.map((role) => {
+            const selected = data.roles.includes(role);
+            const isOthers = role === 'Others';
+            if (isOthers) return null;
+            return (
+              <button
+                key={role}
+                type="button"
+                onClick={() => toggleRole(role)}
+                className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm font-medium border transition-all ${
+                  selected
+                    ? 'bg-primary text-primary-foreground border-primary'
+                    : 'border-border bg-card text-foreground hover:border-foreground/40'
+                }`}
+              >
+                {role}
+                {selected && (
+                  <X className="size-3.5" />
+                )}
+              </button>
+            );
+          })}
+        </div>
         <div className="flex gap-2">
-          <Input
-            value={newProject}
-            onChange={(e) => setNewProject(e.target.value)}
+          <input
+            value={customRole}
+            onChange={(e) => setCustomRole(e.target.value)}
             onKeyDown={(e) => {
-              if (e.key === 'Enter' && newProject.trim()) {
+              if (e.key === 'Enter') {
                 e.preventDefault();
-                setData({ ...data, projects: [...data.projects, newProject.trim()] });
-                setNewProject('');
+                addCustomRole();
               }
             }}
-            placeholder="Project name"
+            placeholder="Add a custom role..."
+            className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
           />
           <Button
             type="button"
-            size="icon"
             variant="outline"
-            disabled={!newProject.trim()}
-            onClick={() => {
-              setData({ ...data, projects: [...data.projects, newProject.trim()] });
-              setNewProject('');
-            }}
+            onClick={addCustomRole}
+            disabled={!customRole.trim()}
+            size="icon"
           >
             <Plus className="size-4" />
           </Button>
         </div>
-        <div className="flex flex-wrap gap-2">
-          {data.projects.map((p, i) => (
-            <span
-              key={i}
-              className="inline-flex items-center gap-1.5 rounded-full border bg-secondary px-3 py-1 text-sm"
-            >
-              {p}
-              <button
-                onClick={() => setData({ ...data, projects: data.projects.filter((_, idx) => idx !== i) })}
-                className="text-muted-foreground hover:text-foreground transition-colors"
-              >
-                <X className="size-3.5" />
-              </button>
-            </span>
-          ))}
-        </div>
+        {customRoles.length > 0 && (
+          <div className="flex flex-wrap gap-2">
+            {customRoles.map((role) => (
+              <Badge key={role} variant="secondary" className="gap-1.5 py-1.5 pl-3 pr-2 text-sm">
+                {role}
+                <button
+                  onClick={() => toggleRole(role)}
+                  className="text-muted-foreground hover:text-foreground transition-colors ml-0.5"
+                >
+                  <X className="size-3.5" />
+                </button>
+              </Badge>
+            ))}
+          </div>
+        )}
       </div>
 
+      <Separator />
+
+      {/* Projects */}
+      <div className="space-y-3">
+        <label className="text-sm font-medium">Projects you're working on</label>
+        <div className="flex flex-col gap-2 rounded-xl border bg-card p-4">
+          <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
+            Add a project
+          </p>
+          <Input
+            value={newProjectName}
+            onChange={(e) => setNewProjectName(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') {
+                e.preventDefault();
+                addProject();
+              }
+            }}
+            placeholder="Project name"
+          />
+          <textarea
+            value={newProjectDesc}
+            onChange={(e) => setNewProjectDesc(e.target.value)}
+            placeholder="Short description (optional)"
+            rows={2}
+            className="flex w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 resize-none"
+          />
+          <Button
+            type="button"
+            variant="outline"
+            onClick={addProject}
+            disabled={!newProjectName.trim()}
+            className="gap-2 self-start"
+          >
+            <Plus className="size-4" />
+            Add Project
+          </Button>
+        </div>
+        {data.projects.length > 0 && (
+          <div className="space-y-2 max-h-[240px] overflow-y-auto">
+            {data.projects.map((p, i) => (
+              <Card key={i} className="relative">
+                <CardContent className="p-3 pr-10">
+                  <div className="font-medium text-sm">{p.name}</div>
+                  {p.description && (
+                    <p className="text-xs text-muted-foreground mt-0.5 line-clamp-2">
+                      {p.description}
+                    </p>
+                  )}
+                </CardContent>
+                <button
+                  onClick={() =>
+                    setData({ ...data, projects: data.projects.filter((_, idx) => idx !== i) })
+                  }
+                  className="absolute top-2 right-2 text-muted-foreground hover:text-foreground transition-colors"
+                >
+                  <X className="size-3.5" />
+                </button>
+              </Card>
+            ))}
+          </div>
+        )}
+      </div>
+
+      <Separator />
+
+      {/* VIP Contacts */}
       <div className="space-y-3">
         <label className="text-sm font-medium">VIP contacts</label>
         <p className="text-xs text-muted-foreground -mt-2">
@@ -142,17 +286,7 @@ export function ContextEditor({ onClose }: { onClose?: () => void }) {
             size="icon"
             variant="outline"
             disabled={!newPersonName.trim()}
-            onClick={() => {
-              setData({
-                ...data,
-                people: [
-                  ...data.people,
-                  { name: newPersonName.trim(), email: newPersonEmail.trim() || undefined },
-                ],
-              });
-              setNewPersonName('');
-              setNewPersonEmail('');
-            }}
+            onClick={addPerson}
           >
             <Plus className="size-4" />
           </Button>
@@ -170,7 +304,9 @@ export function ContextEditor({ onClose }: { onClose?: () => void }) {
                 )}
               </div>
               <button
-                onClick={() => setData({ ...data, people: data.people.filter((_, idx) => idx !== i) })}
+                onClick={() =>
+                  setData({ ...data, people: data.people.filter((_, idx) => idx !== i) })
+                }
                 className="text-muted-foreground hover:text-foreground transition-colors"
               >
                 <X className="size-3.5" />
@@ -180,6 +316,9 @@ export function ContextEditor({ onClose }: { onClose?: () => void }) {
         </div>
       </div>
 
+      <Separator />
+
+      {/* Focus Summary */}
       <div className="space-y-1.5">
         <label className="text-sm font-medium">Anything else?</label>
         <textarea
