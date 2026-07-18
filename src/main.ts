@@ -5,6 +5,7 @@ import started from 'electron-squirrel-startup';
 import { initDatabase, closeDatabase } from './services/database';
 import { registerAuthHandlers } from './services/oauth-server';
 import { registerOnboardingHandlers } from './services/onboarding-server';
+import { registerSyncHandlers } from './services/sync-server';
 
 if (started) {
   app.quit();
@@ -14,6 +15,7 @@ app.on('ready', () => {
   initDatabase();
   registerAuthHandlers();
   registerOnboardingHandlers();
+  registerSyncHandlers();
   createWindow();
 });
 

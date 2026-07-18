@@ -14,7 +14,7 @@
   ],
   "parser": "@typescript-eslint/parser",
   "rules": {
-    "import/no-unresolved": ["error", { "ignore": ["^@/", "^@tailwindcss/"] }],
+    "import/no-unresolved": ["error", { "ignore": ["^@/", "^@tailwindcss/", "^vitest/"] }],
     "@typescript-eslint/no-non-null-assertion": "warn"
   }
 }

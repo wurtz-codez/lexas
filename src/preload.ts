@@ -11,4 +11,8 @@ contextBridge.exposeInMainWorld('electron', {
     setCompleted: () => ipcRenderer.invoke('onboarding:setCompleted'),
     getStatus: () => ipcRenderer.invoke('onboarding:getStatus'),
   },
+  sync: {
+    gmail: () => ipcRenderer.invoke('sync:gmail'),
+    calendar: () => ipcRenderer.invoke('sync:calendar'),
+  },
 });

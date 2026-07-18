@@ -29,6 +29,10 @@ export type OnboardingData = {
   focusSummary: string;
 };
 
+export type SyncResult = {
+  synced: number;
+};
+
 export type OnboardingStatus = {
   completed: boolean;
   displayName: string | null;
@@ -50,6 +54,10 @@ declare global {
         save: (data: OnboardingData) => Promise<void>;
         setCompleted: () => Promise<void>;
         getStatus: () => Promise<OnboardingStatus>;
+      };
+      sync: {
+        gmail: () => Promise<SyncResult>;
+        calendar: () => Promise<SyncResult>;
       };
     };
   }

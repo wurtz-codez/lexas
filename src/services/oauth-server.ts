@@ -141,13 +141,16 @@ function storeTokens(
   `).run(provider, encryptedRefreshToken, accessToken, accessTokenExpiry, email);
 }
 
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-async function refreshAccessToken(config: ProviderConfig, clientId: string, refreshToken: string): Promise<TokenPair> {
+async function refreshAccessToken(config: ProviderConfig, clientId: string, clientSecret: string | undefined, refreshToken: string): Promise<TokenPair> {
   const body = new URLSearchParams({
     refresh_token: refreshToken,
     client_id: clientId,
     grant_type: 'refresh_token',
   });
+
+  if (clientSecret) {
+    body.set('client_secret', clientSecret);
+  }
 
   const response = await fetch(config.tokenUrl, {
     method: 'POST',
@@ -238,6 +241,34 @@ function getAuthStatus(): AuthStatus {
     provider: row.provider as OAuthProvider,
     email: row.email,
   };
+}
+
+export async function getValidAccessToken(provider: OAuthProvider): Promise<string> {
+  const db = getDb();
+  const row = db.prepare(
+    'SELECT access_token, access_token_expiry, encrypted_refresh_token FROM auth_tokens WHERE provider = ?'
+  ).get(provider) as { access_token: string | null; access_token_expiry: string | null; encrypted_refresh_token: Buffer } | undefined;
+
+  if (!row) {
+    throw new Error(`No auth tokens found for ${provider}. Connect your account first.`);
+  }
+
+  if (row.access_token && row.access_token_expiry && new Date(row.access_token_expiry) > new Date()) {
+    return row.access_token;
+  }
+
+  const config = PROVIDERS[provider];
+  const clientId = getClientId(provider);
+  const refreshToken = safeStorage.decryptString(row.encrypted_refresh_token);
+
+  const clientSecret = getClientSecret(provider);
+  const tokens = await refreshAccessToken(config, clientId, clientSecret, refreshToken);
+  const expiresAt = new Date(Date.now() + tokens.expires_in * 1000).toISOString();
+
+  const existing = db.prepare('SELECT email FROM auth_tokens WHERE provider = ?').get(provider) as { email: string | null } | undefined;
+  storeTokens(provider, row.encrypted_refresh_token, tokens.access_token, expiresAt, existing?.email ?? null);
+
+  return tokens.access_token;
 }
 
 export function registerAuthHandlers(): void {
