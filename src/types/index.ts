@@ -33,6 +33,11 @@ export type SyncResult = {
   synced: number;
 };
 
+export type BriefResult = {
+  brief_id: number;
+  items_ranked: number;
+};
+
 export type OnboardingStatus = {
   completed: boolean;
   displayName: string | null;
@@ -58,6 +63,9 @@ declare global {
       sync: {
         gmail: () => Promise<SyncResult>;
         calendar: () => Promise<SyncResult>;
+      };
+      brief: {
+        generate: (date: string) => Promise<BriefResult>;
       };
     };
   }

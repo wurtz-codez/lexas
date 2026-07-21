@@ -6,6 +6,7 @@ import { initDatabase, closeDatabase } from './services/database';
 import { registerAuthHandlers } from './services/oauth-server';
 import { registerOnboardingHandlers } from './services/onboarding-server';
 import { registerSyncHandlers } from './services/sync-server';
+import { registerBriefHandlers } from './services/brief-server';
 
 if (started) {
   app.quit();
@@ -16,6 +17,7 @@ app.on('ready', () => {
   registerAuthHandlers();
   registerOnboardingHandlers();
   registerSyncHandlers();
+  registerBriefHandlers();
   createWindow();
 });
 

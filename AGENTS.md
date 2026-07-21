@@ -149,8 +149,8 @@ lexas/
 ## Git State
 
 - **Branch:** main
-- **Commits:** 9 (Enchanced the onboarding process questions and options.) [latest: `e3e0027`]
-- **Last Updated:** 2026-07-17
+- **Commits:** 10 (SYNC: Gmail and Google Calendar sync is up and running (fetching mails and events)) [latest: `28707c1`]
+- **Last Updated:** 2026-07-18
 
 ---
 
