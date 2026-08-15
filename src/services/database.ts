@@ -67,7 +67,8 @@ CREATE TABLE IF NOT EXISTS item_links (
     item_id         INTEGER NOT NULL REFERENCES synced_items(id) ON DELETE CASCADE,
     related_item_id INTEGER NOT NULL REFERENCES synced_items(id) ON DELETE CASCADE,
     link_type       TEXT NOT NULL,
-    created_at      TEXT DEFAULT CURRENT_TIMESTAMP
+    created_at      TEXT DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE (item_id, related_item_id, link_type)
 );
 
 CREATE TABLE IF NOT EXISTS briefs (
@@ -121,6 +122,24 @@ function runMigrations(database: Database.Database): void {
   }
   if (!existing.get('onboarding_completed')) {
     database.exec("ALTER TABLE user_context ADD COLUMN onboarding_completed INTEGER NOT NULL DEFAULT 0");
+  }
+
+  const itemLinksTable = database.prepare(
+    "SELECT sql FROM sqlite_master WHERE type='table' AND name='item_links'",
+  ).get() as { sql: string } | undefined;
+
+  if (itemLinksTable && !itemLinksTable.sql.includes('UNIQUE')) {
+    database.exec('DROP TABLE IF EXISTS item_links');
+    database.exec(`
+      CREATE TABLE item_links (
+        id              INTEGER PRIMARY KEY AUTOINCREMENT,
+        item_id         INTEGER NOT NULL REFERENCES synced_items(id) ON DELETE CASCADE,
+        related_item_id INTEGER NOT NULL REFERENCES synced_items(id) ON DELETE CASCADE,
+        link_type       TEXT NOT NULL,
+        created_at      TEXT DEFAULT CURRENT_TIMESTAMP,
+        UNIQUE (item_id, related_item_id, link_type)
+      )
+    `);
   }
 }
 

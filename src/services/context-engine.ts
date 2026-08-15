@@ -32,8 +32,8 @@ type InputItem = {
 };
 
 type InputLink = {
-  item_a: number;
-  item_b: number;
+  item_id: number;
+  related_item_id: number;
   link_type: string;
 };
 
@@ -128,7 +128,7 @@ export async function generateBrief(
   const uniqueLinks: InputLink[] = [];
   const seen = new Set<string>();
   for (const link of links) {
-    const key = [link.item_a, link.item_b].sort().join(':');
+    const key = [link.item_id, link.related_item_id].sort().join(':');
     if (!seen.has(key)) {
       seen.add(key);
       uniqueLinks.push(link);

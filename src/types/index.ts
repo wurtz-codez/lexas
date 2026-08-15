@@ -38,6 +38,11 @@ export type BriefResult = {
   items_ranked: number;
 };
 
+export type CorrelationResult = {
+  resolved: number;
+  links: number;
+};
+
 export type OnboardingStatus = {
   completed: boolean;
   displayName: string | null;
@@ -63,6 +68,7 @@ declare global {
       sync: {
         gmail: () => Promise<SyncResult>;
         calendar: () => Promise<SyncResult>;
+        correlate: () => Promise<CorrelationResult>;
       };
       brief: {
         generate: (date: string) => Promise<BriefResult>;

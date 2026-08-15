@@ -14,6 +14,7 @@ contextBridge.exposeInMainWorld('electron', {
   sync: {
     gmail: () => ipcRenderer.invoke('sync:gmail'),
     calendar: () => ipcRenderer.invoke('sync:calendar'),
+    correlate: () => ipcRenderer.invoke('sync:correlate'),
   },
   brief: {
     generate: (date: string) => ipcRenderer.invoke('brief:generate', date),
