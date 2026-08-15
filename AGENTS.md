@@ -149,8 +149,8 @@ lexas/
 ## Git State
 
 - **Branch:** main
-- **Commits:** 11 (feat(BRIEF): Generating the briefs and providing ranking of the mails using Gemini in the backend.) [latest: `c19dce3`]
-- **Last Updated:** 2026-07-21
+- **Commits:** 12 (feat[BRIEF]: Matched the InputLink with the SQL columns so the dedup ket works and all the links reach Gemini instead of collapsing to one.) [latest: `68edc4d`]
+- **Last Updated:** 2026-08-15
 
 ---
 
@@ -169,3 +169,4 @@ lexas/
 - Client IDs must be set in `.env`: `GOOGLE_CLIENT_ID`, `MICROSOFT_CLIENT_ID`
 - No test framework is configured
 - No `.env` or environment-specific files exist
+- **Feedback table is an append-only log**: thumbs-up then thumbs-down keeps BOTH rows (only consecutive identical taps are suppressed in `feedback:submit`). Any future code reading feedback to answer "what's the current signal on this brief item?" MUST take the latest row per `brief_item_id` (`ORDER BY created_at DESC / id DESC LIMIT 1`) — never count all rows as independent votes. Rule also documented in a comment in `src/services/feedback-server.ts`.

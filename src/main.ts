@@ -7,6 +7,7 @@ import { registerAuthHandlers } from './services/oauth-server';
 import { registerOnboardingHandlers } from './services/onboarding-server';
 import { registerSyncHandlers } from './services/sync-server';
 import { registerBriefHandlers } from './services/brief-server';
+import { registerFeedbackHandlers } from './services/feedback-server';
 
 if (started) {
   app.quit();
@@ -18,6 +19,7 @@ app.on('ready', () => {
   registerOnboardingHandlers();
   registerSyncHandlers();
   registerBriefHandlers();
+  registerFeedbackHandlers();
   createWindow();
 });
 

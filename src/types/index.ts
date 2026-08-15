@@ -43,6 +43,40 @@ export type CorrelationResult = {
   links: number;
 };
 
+export type RunAllSyncResult = {
+  gmail: SyncResult | null;
+  calendar: SyncResult | null;
+  correlation: CorrelationResult | null;
+  errors: string[];
+};
+
+export type FeedbackType = 'important' | 'not_important' | 'dismissed';
+
+export type BriefItemDetail = {
+  id: number;
+  synced_item_id: number;
+  rank: number;
+  reason: string | null;
+  score: number | null;
+  item: {
+    source: 'email' | 'calendar';
+    title: string | null;
+    snippet: string | null;
+    sender_email: string | null;
+    occurred_at: string | null;
+    ends_at: string | null;
+  };
+  person: { id: number; name: string; email: string | null; is_vip: boolean } | null;
+  project: { id: number; name: string } | null;
+};
+
+export type BriefDetail = {
+  id: number;
+  brief_date: string;
+  generated_at: string;
+  items: BriefItemDetail[];
+};
+
 export type OnboardingStatus = {
   completed: boolean;
   displayName: string | null;
@@ -69,9 +103,14 @@ declare global {
         gmail: () => Promise<SyncResult>;
         calendar: () => Promise<SyncResult>;
         correlate: () => Promise<CorrelationResult>;
+        runAll: () => Promise<RunAllSyncResult>;
       };
       brief: {
         generate: (date: string) => Promise<BriefResult>;
+        getLatest: () => Promise<BriefDetail | null>;
+      };
+      feedback: {
+        submit: (briefItemId: number, type: FeedbackType) => Promise<void>;
       };
     };
   }

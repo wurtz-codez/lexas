@@ -8,7 +8,7 @@ import type { OnboardingStatus } from '@/types';
 
 function isEmpty(status: OnboardingStatus | null): boolean {
   if (!status) return true;
-  return !status.displayName && !status.role && status.projects.length === 0 && status.people.length === 0 && !status.focusSummary;
+  return !status.displayName && status.roles.length === 0 && status.projects.length === 0 && status.people.length === 0 && !status.focusSummary;
 }
 
 export function RootLayout({ onboarding }: { onboarding: OnboardingStatus | null }) {

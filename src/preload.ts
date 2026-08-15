@@ -1,4 +1,5 @@
 import { contextBridge, ipcRenderer } from 'electron';
+import type { FeedbackType } from './types';
 
 contextBridge.exposeInMainWorld('electron', {
   auth: {
@@ -15,8 +16,13 @@ contextBridge.exposeInMainWorld('electron', {
     gmail: () => ipcRenderer.invoke('sync:gmail'),
     calendar: () => ipcRenderer.invoke('sync:calendar'),
     correlate: () => ipcRenderer.invoke('sync:correlate'),
+    runAll: () => ipcRenderer.invoke('sync:runAll'),
   },
   brief: {
     generate: (date: string) => ipcRenderer.invoke('brief:generate', date),
+    getLatest: () => ipcRenderer.invoke('brief:getLatest'),
+  },
+  feedback: {
+    submit: (briefItemId: number, type: FeedbackType) => ipcRenderer.invoke('feedback:submit', briefItemId, type),
   },
 });
