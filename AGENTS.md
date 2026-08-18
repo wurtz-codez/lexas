@@ -149,8 +149,8 @@ lexas/
 ## Git State
 
 - **Branch:** main
-- **Commits:** 13 (IPC Surface) [latest: `ad85faa`]
-- **Last Updated:** 2026-08-15
+- **Commits:** 14 (FRONTEND: Added brief card with details and responses button) [latest: `f1ec0b0`]
+- **Last Updated:** 2026-08-18
 
 ---
 

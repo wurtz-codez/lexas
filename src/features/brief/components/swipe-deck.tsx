@@ -8,6 +8,13 @@ import type { ExitSignal, TriageAction } from './deck-types';
 
 type HistoryEntry = { item: BriefItemDetail; action: TriageAction };
 
+// The deck treats the LAST element of the queue as the top card. The backend
+// returns items rank-ascending (rank 1 = most important), so reverse that so the
+// most important mail is on top of the deck, followed by less important ones.
+function orderedQueue(items: BriefItemDetail[]): BriefItemDetail[] {
+  return [...items].sort((a, b) => b.rank - a.rank);
+}
+
 function TriageComplete({
   kept,
   archived,
@@ -40,7 +47,7 @@ export function SwipeDeck({
   items: BriefItemDetail[];
   onDecision: (item: BriefItemDetail, action: TriageAction) => Promise<void> | void;
 }) {
-  const [queue, setQueue] = useState<BriefItemDetail[]>(() => [...items]);
+  const [queue, setQueue] = useState<BriefItemDetail[]>(() => orderedQueue(items));
   const [history, setHistory] = useState<HistoryEntry[]>([]);
   const [counts, setCounts] = useState({ keep: 0, archive: 0 });
   const [exitSignal, setExitSignal] = useState<ExitSignal>(null);
@@ -96,7 +103,7 @@ export function SwipeDeck({
   }, []);
 
   const reset = useCallback(() => {
-    setQueue([...items]);
+    setQueue(orderedQueue(items));
     setHistory([]);
     setCounts({ keep: 0, archive: 0 });
     setExitSignal(null);
