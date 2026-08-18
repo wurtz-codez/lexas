@@ -1,8 +1,9 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, type ReactNode } from 'react';
 import { motion, useMotionValue, useTransform, animate } from 'motion/react';
 import { CalendarDays, Mail, Sparkles, Star, ThumbsDown, ThumbsUp } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
+import { AddToCalendarButton } from './add-to-calendar-button';
 import type { BriefItemDetail } from '@/types';
 import type { ExitSignal, TriageAction } from './deck-types';
 
@@ -56,7 +57,15 @@ function feedbackChip(item: BriefItemDetail): { label: string; className: string
   }
 }
 
-export function CardBody({ item, dimmed }: { item: BriefItemDetail; dimmed?: boolean }) {
+export function CardBody({
+  item,
+  dimmed,
+  action,
+}: {
+  item: BriefItemDetail;
+  dimmed?: boolean;
+  action?: ReactNode;
+}) {
   const senderName = item.person?.name ?? item.item.sender_email ?? 'Unknown';
   const senderEmail = item.item.sender_email;
   const pill = categoryPill(item);
@@ -119,16 +128,18 @@ export function CardBody({ item, dimmed }: { item: BriefItemDetail; dimmed?: boo
         </div>
       )}
 
-      <div className="flex items-center justify-between text-xs text-muted-foreground">
-        <span className="inline-flex items-center gap-1.5">
+      <div className="flex items-center justify-between gap-2 text-xs text-muted-foreground">
+        <span className="inline-flex min-w-0 items-center gap-1.5">
           {item.item.source === 'email' ? (
-            <Mail className="size-3.5" />
+            <Mail className="size-3.5 shrink-0" />
           ) : (
-            <CalendarDays className="size-3.5" />
+            <CalendarDays className="size-3.5 shrink-0" />
           )}
-          {item.item.source === 'email' ? 'Email' : 'Calendar event'}
+          <span className="truncate">
+            {item.item.source === 'email' ? 'Email' : 'Calendar event'} · Rank #{item.rank}
+          </span>
         </span>
-        <span className="tabular-nums">Rank #{item.rank}</span>
+        {action}
       </div>
     </div>
   );
@@ -188,7 +199,14 @@ export function SwipeCard({
       onDragEnd={handleDragEnd}
     >
       <div className="h-full overflow-hidden rounded-3xl border border-white/40 bg-white/60 shadow-2xl shadow-black/10 backdrop-blur-xl dark:border-white/10 dark:bg-slate-900/60">
-        <CardBody item={item} />
+        <CardBody
+          item={item}
+          action={
+            item.item.source === 'email' && item.suggested_action ? (
+              <AddToCalendarButton item={item} />
+            ) : undefined
+          }
+        />
 
         <motion.div
           className="absolute left-5 top-5"

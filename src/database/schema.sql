@@ -87,7 +87,8 @@ CREATE TABLE IF NOT EXISTS brief_items (
     synced_item_id  INTEGER NOT NULL REFERENCES synced_items(id) ON DELETE CASCADE,
     rank            INTEGER NOT NULL,
     reason          TEXT,
-    score           REAL
+    score           REAL,
+    suggested_action TEXT
 );
 
 CREATE INDEX IF NOT EXISTS idx_brief_items_brief ON brief_items(brief_id);

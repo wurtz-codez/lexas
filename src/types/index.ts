@@ -52,6 +52,23 @@ export type RunAllSyncResult = {
 
 export type FeedbackType = 'important' | 'not_important' | 'dismissed';
 
+export type SuggestedAction = {
+  proposed_title: string;
+  proposed_start: string;
+  proposed_end: string;
+};
+
+export type CreateEventRequest = {
+  title: string;
+  start: string;
+  end: string;
+  synced_item_id: number;
+};
+
+export type CreateEventResult = {
+  event_id: string;
+};
+
 export type BriefItemDetail = {
   id: number;
   synced_item_id: number;
@@ -69,6 +86,7 @@ export type BriefItemDetail = {
   person: { id: number; name: string; email: string | null; is_vip: boolean } | null;
   project: { id: number; name: string } | null;
   feedback: { type: FeedbackType; created_at: string } | null;
+  suggested_action: SuggestedAction | null;
 };
 
 export type BriefDetail = {
@@ -112,6 +130,9 @@ declare global {
       };
       feedback: {
         submit: (briefItemId: number, type: FeedbackType) => Promise<void>;
+      };
+      calendar: {
+        createEvent: (details: CreateEventRequest) => Promise<CreateEventResult>;
       };
     };
   }

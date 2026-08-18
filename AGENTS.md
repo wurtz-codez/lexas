@@ -121,6 +121,10 @@ lexas/
 - [x] Post-install rebuild script for native module compatibility
 - [x] Types exported for all tables (src/database/index.ts)
 - [x] AutoUnpackNatives plugin configured for packaging
+- [x] **Action Engine**: `suggested_action` optional field in Gemini brief schema (emails implying a meeting/task only), persisted as JSON on `brief_items`, surfaced as an "Add to Calendar" button on swipe cards
+- [x] Confirmation modal (`add-to-calendar-button.tsx`) — editable title + local-time start/end, confirm-then-create (never auto-create)
+- [x] `calendar.createEvent` IPC → Google Calendar `events.insert`, records row in `calendar_actions` (synced_item_id + created_event_external_id)
+- [x] Keyboard swipe shortcuts ignored while editing inputs (calendar modal)
 
 ### Not Yet Implemented
 - [ ] Application-specific business logic
@@ -149,7 +153,7 @@ lexas/
 ## Git State
 
 - **Branch:** main
-- **Commits:** 14 (FRONTEND: Added brief card with details and responses button) [latest: `f1ec0b0`]
+- **Commits:** 15 (FRONTEND: Added swipe animation with descending ranking order.) [latest: `66b3a66`]
 - **Last Updated:** 2026-08-18
 
 ---

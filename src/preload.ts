@@ -1,5 +1,5 @@
 import { contextBridge, ipcRenderer } from 'electron';
-import type { FeedbackType } from './types';
+import type { CreateEventRequest, FeedbackType } from './types';
 
 contextBridge.exposeInMainWorld('electron', {
   auth: {
@@ -24,5 +24,8 @@ contextBridge.exposeInMainWorld('electron', {
   },
   feedback: {
     submit: (briefItemId: number, type: FeedbackType) => ipcRenderer.invoke('feedback:submit', briefItemId, type),
+  },
+  calendar: {
+    createEvent: (details: CreateEventRequest) => ipcRenderer.invoke('calendar:createEvent', details),
   },
 });

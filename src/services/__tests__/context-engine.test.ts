@@ -232,6 +232,74 @@ describe('generateBrief', () => {
     expect(result.items_ranked).toBe(1);
   });
 
+  it('persists suggested_action as JSON when present in the response', async () => {
+    mockGeminiResponse(JSON.stringify([
+      {
+        synced_item_id: 1,
+        rank: 1,
+        reason: 'Budget item',
+        score: 0.9,
+        suggested_action: {
+          proposed_title: 'Budget Review',
+          proposed_start: '2026-07-21T15:00:00Z',
+          proposed_end: '2026-07-21T16:00:00Z',
+        },
+      },
+    ]));
+
+    const db = createMockDb({
+      userContext: { role: null, focus_summary: null },
+      vips: [],
+      items: [mockItem],
+      links: [],
+    });
+
+    const { generateBrief } = await import('../context-engine');
+    await generateBrief(db, '2026-07-21');
+
+    const prepare = db.prepare as ReturnType<typeof vi.fn>;
+    const idx = prepare.mock.calls.findIndex(
+      (c: [string]) => c[0].toLowerCase().startsWith('insert into brief_items'),
+    );
+    expect(idx).toBeGreaterThanOrEqual(0);
+    const run = prepare.mock.results[idx].value.run as ReturnType<typeof vi.fn>;
+    expect(run).toHaveBeenCalledWith(
+      42,
+      1,
+      1,
+      'Budget item',
+      0.9,
+      JSON.stringify({
+        proposed_title: 'Budget Review',
+        proposed_start: '2026-07-21T15:00:00Z',
+        proposed_end: '2026-07-21T16:00:00Z',
+      }),
+    );
+  });
+
+  it('stores null suggested_action when the response omits it', async () => {
+    mockGeminiResponse(JSON.stringify([
+      { synced_item_id: 1, rank: 1, reason: 'Budget item', score: 0.9 },
+    ]));
+
+    const db = createMockDb({
+      userContext: { role: null, focus_summary: null },
+      vips: [],
+      items: [mockItem],
+      links: [],
+    });
+
+    const { generateBrief } = await import('../context-engine');
+    await generateBrief(db, '2026-07-21');
+
+    const prepare = db.prepare as ReturnType<typeof vi.fn>;
+    const idx = prepare.mock.calls.findIndex(
+      (c: [string]) => c[0].toLowerCase().startsWith('insert into brief_items'),
+    );
+    const run = prepare.mock.results[idx].value.run as ReturnType<typeof vi.fn>;
+    expect(run).toHaveBeenCalledWith(42, 1, 1, 'Budget item', 0.9, null);
+  });
+
   it('throws when API key is not configured', async () => {
     const { getGeminiApiKey } = await import('@/features/brief/config');
     vi.mocked(getGeminiApiKey).mockReturnValue('');

@@ -8,6 +8,7 @@ import { registerOnboardingHandlers } from './services/onboarding-server';
 import { registerSyncHandlers } from './services/sync-server';
 import { registerBriefHandlers } from './services/brief-server';
 import { registerFeedbackHandlers } from './services/feedback-server';
+import { registerCalendarHandlers } from './services/calendar-server';
 
 if (started) {
   app.quit();
@@ -20,6 +21,7 @@ app.on('ready', () => {
   registerSyncHandlers();
   registerBriefHandlers();
   registerFeedbackHandlers();
+  registerCalendarHandlers();
   createWindow();
 });
 

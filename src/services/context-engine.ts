@@ -12,11 +12,18 @@ export type BriefResult = {
   items_ranked: number;
 };
 
+export type SuggestedAction = {
+  proposed_title: string;
+  proposed_start: string;
+  proposed_end: string;
+};
+
 type RankedItem = {
   synced_item_id: number;
   rank: number;
   reason: string;
   score?: number;
+  suggested_action?: SuggestedAction | null;
 };
 
 type InputItem = {
@@ -50,6 +57,14 @@ function buildSystemPrompt(role: string | null, focusSummary: string | null, vip
   }
 
   parts.push('\nToday\'s items:');
+
+  parts.push(
+    '\nOptional suggested_action: For EMAIL items that clearly imply a scheduled task or meeting, ' +
+    'include a suggested_action with a concise proposed_title (calendar event title), and ' +
+    'proposed_start/proposed_end as ISO 8601 datetimes resolved from the email\'s occurred_at ' +
+    'and any time mentioned in the text. NEVER suggest an action for calendar events. ' +
+    'Leave suggested_action out entirely when the email does not imply a schedulable event.',
+  );
 
   return parts.join('\n');
 }
@@ -171,6 +186,16 @@ export async function generateBrief(
               rank: { type: SchemaType.INTEGER },
               reason: { type: SchemaType.STRING },
               score: { type: SchemaType.NUMBER },
+              suggested_action: {
+                type: SchemaType.OBJECT,
+                nullable: true,
+                properties: {
+                  proposed_title: { type: SchemaType.STRING },
+                  proposed_start: { type: SchemaType.STRING },
+                  proposed_end: { type: SchemaType.STRING },
+                },
+                required: ['proposed_title', 'proposed_start', 'proposed_end'],
+              },
             },
             required: ['synced_item_id', 'rank', 'reason', 'score'],
           },
@@ -224,11 +249,18 @@ export async function generateBrief(
     const briefId = info.lastInsertRowid as number;
 
     const insertItem = db.prepare(
-      'INSERT INTO brief_items (brief_id, synced_item_id, rank, reason, score) VALUES (?, ?, ?, ?, ?)',
+      'INSERT INTO brief_items (brief_id, synced_item_id, rank, reason, score, suggested_action) VALUES (?, ?, ?, ?, ?, ?)',
     );
 
     for (const r of ranked) {
-      insertItem.run(briefId, r.synced_item_id, r.rank, r.reason, r.score ?? null);
+      insertItem.run(
+        briefId,
+        r.synced_item_id,
+        r.rank,
+        r.reason,
+        r.score ?? null,
+        r.suggested_action ? JSON.stringify(r.suggested_action) : null,
+      );
     }
 
     return briefId;

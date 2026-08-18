@@ -83,7 +83,8 @@ CREATE TABLE IF NOT EXISTS brief_items (
     synced_item_id  INTEGER NOT NULL REFERENCES synced_items(id) ON DELETE CASCADE,
     rank            INTEGER NOT NULL,
     reason          TEXT,
-    score           REAL
+    score           REAL,
+    suggested_action TEXT
 );
 
 CREATE INDEX IF NOT EXISTS idx_brief_items_brief ON brief_items(brief_id);
@@ -122,6 +123,14 @@ function runMigrations(database: Database.Database): void {
   }
   if (!existing.get('onboarding_completed')) {
     database.exec("ALTER TABLE user_context ADD COLUMN onboarding_completed INTEGER NOT NULL DEFAULT 0");
+  }
+
+  const briefItemsCols = database.prepare(
+    "SELECT name FROM pragma_table_info('brief_items')",
+  ).all() as { name: string }[];
+
+  if (!briefItemsCols.some((c) => c.name === 'suggested_action')) {
+    database.exec("ALTER TABLE brief_items ADD COLUMN suggested_action TEXT");
   }
 
   const itemLinksTable = database.prepare(

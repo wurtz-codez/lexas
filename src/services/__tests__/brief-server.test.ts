@@ -6,6 +6,7 @@ type Row = {
   rank: number;
   reason: string | null;
   score: number | null;
+  suggested_action: string | null;
   synced_item_id: number;
   source: string;
   title: string | null;
@@ -66,7 +67,7 @@ describe('getLatestBrief', () => {
       brief: { id: 9, brief_date: '2026-07-21', generated_at: '2026-07-21T08:00:00Z' },
       rows: [
         {
-          brief_item_id: 11, rank: 1, reason: 'Budget deadline', score: 0.95,
+          brief_item_id: 11, rank: 1, reason: 'Budget deadline', score: 0.95, suggested_action: null,
           synced_item_id: 1, source: 'email', title: 'Q3 Budget Review',
           snippet: 'Review by Friday', sender_email: 'ceo@company.com',
           occurred_at: '2026-07-21T09:00:00Z', ends_at: null,
@@ -74,7 +75,7 @@ describe('getLatestBrief', () => {
           project_id: 5, project_name: 'Budget Planning',
         },
         {
-          brief_item_id: 12, rank: 2, reason: 'Standup', score: 0.6,
+          brief_item_id: 12, rank: 2, reason: 'Standup', score: 0.6, suggested_action: null,
           synced_item_id: 2, source: 'calendar', title: 'Team Standup',
           snippet: null, sender_email: null,
           occurred_at: '2026-07-21T10:00:00Z', ends_at: '2026-07-21T10:30:00Z',
@@ -110,7 +111,7 @@ describe('getLatestBrief', () => {
       brief: { id: 9, brief_date: '2026-07-21', generated_at: '2026-07-21T08:00:00Z' },
       rows: [
         {
-          brief_item_id: 11, rank: 1, reason: 'Budget deadline', score: 0.95,
+          brief_item_id: 11, rank: 1, reason: 'Budget deadline', score: 0.95, suggested_action: null,
           synced_item_id: 1, source: 'email', title: 'Q3 Budget Review',
           snippet: 'Review by Friday', sender_email: 'ceo@company.com',
           occurred_at: '2026-07-21T09:00:00Z', ends_at: null,
@@ -118,7 +119,7 @@ describe('getLatestBrief', () => {
           project_id: 5, project_name: 'Budget Planning',
         },
         {
-          brief_item_id: 12, rank: 2, reason: 'Standup', score: 0.6,
+          brief_item_id: 12, rank: 2, reason: 'Standup', score: 0.6, suggested_action: null,
           synced_item_id: 2, source: 'calendar', title: 'Team Standup',
           snippet: null, sender_email: null,
           occurred_at: '2026-07-21T10:00:00Z', ends_at: '2026-07-21T10:30:00Z',
@@ -145,5 +146,44 @@ describe('getLatestBrief', () => {
       type: 'dismissed',
       created_at: '2026-07-21T11:00:00Z',
     });
+  });
+
+  it('parses suggested_action JSON onto the item (and null when absent)', async () => {
+    const db = createMockDb({
+      brief: { id: 9, brief_date: '2026-07-21', generated_at: '2026-07-21T08:00:00Z' },
+      rows: [
+        {
+          brief_item_id: 11, rank: 1, reason: 'Budget deadline', score: 0.95,
+          suggested_action: JSON.stringify({
+            proposed_title: 'Budget Review',
+            proposed_start: '2026-07-21T15:00:00Z',
+            proposed_end: '2026-07-21T16:00:00Z',
+          }),
+          synced_item_id: 1, source: 'email', title: 'Q3 Budget Review',
+          snippet: 'Review by Friday', sender_email: 'ceo@company.com',
+          occurred_at: '2026-07-21T09:00:00Z', ends_at: null,
+          person_id: 3, person_name: 'Rahul', person_email: 'rahul@company.com', person_is_vip: 1,
+          project_id: 5, project_name: 'Budget Planning',
+        },
+        {
+          brief_item_id: 12, rank: 2, reason: 'Standup', score: 0.6, suggested_action: null,
+          synced_item_id: 2, source: 'calendar', title: 'Team Standup',
+          snippet: null, sender_email: null,
+          occurred_at: '2026-07-21T10:00:00Z', ends_at: '2026-07-21T10:30:00Z',
+          person_id: null, person_name: null, person_email: null, person_is_vip: null,
+          project_id: null, project_name: null,
+        },
+      ],
+    });
+
+    const { getLatestBrief } = await import('../brief-server');
+    const result = getLatestBrief(db);
+
+    expect(result?.items[0].suggested_action).toEqual({
+      proposed_title: 'Budget Review',
+      proposed_start: '2026-07-21T15:00:00Z',
+      proposed_end: '2026-07-21T16:00:00Z',
+    });
+    expect(result?.items[1].suggested_action).toBeNull();
   });
 });

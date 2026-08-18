@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
-import type { BriefDetail, FeedbackType, RunAllSyncResult } from '@/types';
+import type { BriefDetail, CreateEventRequest, FeedbackType, RunAllSyncResult } from '@/types';
 
 const BRIEF_KEY = ['brief', 'latest'] as const;
 
@@ -36,6 +36,12 @@ export function useRefreshBrief() {
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: BRIEF_KEY });
     },
+  });
+}
+
+export function useCreateEvent() {
+  return useMutation({
+    mutationFn: (details: CreateEventRequest) => window.electron.calendar.createEvent(details),
   });
 }
 

@@ -67,6 +67,7 @@ Exposed in `src/preload.ts`, typed in the `Window` global of `src/types/index.ts
 | `brief`     | `generate(date)`                    | `BriefResult`                        | `brief-server.ts` / `context-engine`|
 |             | `getLatest()`                       | `BriefDetail \| null`                | `brief-server.ts`                   |
 | `feedback`  | `submit(briefItemId, type)`         | `void`                               | `feedback-server.ts`                |
+| `calendar`  | `createEvent(details)`              | `CreateEventResult`                  | `calendar-server.ts`                |
 
 Key shapes:
 
@@ -117,7 +118,8 @@ Key shapes:
 **Components (`features/brief/components/`):**
 - **`swipe-card.tsx`** — front card: `motion` drag on `x` with `dragElastic={0.7}`, tilt via `useTransform(x, [-200,200], [-16,16])`, spring-back under threshold, fly-off beyond 150px/velocity 700. Emerald **Keep** badge (right drag) and slate **Archive** badge (left drag) fade in with drag. `CardBody` renders avatar/initials, sender + email, time pill, category pill (VIP → project → source), feedback chip ("Kept"/"Archived"), subject, snippet, **"Why this matters"** (the `reason` field), and source/rank meta. `BackgroundCard` renders the stack behind it (scaled down, blurred, dimmed).
 - **`action-dock.tsx`** — frosted dock: Archive (left), Undo (center), Keep (right).
-- **`swipe-deck.tsx`** — owns the local `queue`/`history`/`counts`. Decisions call `onDecision(item, action)` (mapped in `BriefView` to `feedback.submit(..., 'important'|'not_important')`); on failure the card is returned to the queue. Keyboard: `←`/`H` archive, `→`/`L` keep, `⌘Z`/`Ctrl+Z` undo. Zero state = **"All triaged"** card with kept/archived counts + Reset (rebuilds the queue in importance order).
+- **`add-to-calendar-button.tsx`** — Action Engine affordance. Rendered on the front card only when `item.item.source === 'email'` **and** `item.suggested_action` exists (Gemini-detected meeting/task). Opens a confirmation `Dialog` with **editable title + start/end** (local-time `datetime-local`, converted to/from ISO), Cancel/Add. On confirm → `calendar.createEvent` → success disables the button ("Added") + writes the `calendar_actions` row backend-side. `onPointerDown` stops propagation so it never starts a card drag.
+- **`swipe-deck.tsx`** — owns the local `queue`/`history`/`counts`. Decisions call `onDecision(item, action)` (mapped in `BriefView` to `feedback.submit(..., 'important'|'not_important')`); on failure the card is returned to the queue. Keyboard: `←`/`H` archive, `→`/`L` keep, `⌘Z`/`Ctrl+Z` undo (ignored while an `INPUT`/`TEXTAREA`/`SELECT` is focused, e.g. the calendar modal). Zero state = **"All triaged"** card with kept/archived counts + Reset (rebuilds the queue in importance order).
 
 > **Product decision:** the brief is **triage via swipe deck** (deliberate user choice). Every card gets a keep/archive verdict; keep records `important`, archive records `not_important`. A ranked-highlights list was briefly tried and reverted in favor of this interaction.
 
@@ -140,8 +142,9 @@ Key shapes:
 4. **Home** → `BriefView`. If no brief has been generated yet, see "No brief yet".
 5. **Refresh** → button runs `sync.runAll()` (Gmail + Calendar + correlation, best-effort) then `brief.generate(today)` then refetches. Partial sync failures surface as `Sync had issues: <specific step message>`.
 6. **Triage** → the most important mail is on top. Swipe each card **right/→/L** to keep (records `important`), **left/←/H** to archive (records `not_important`). Undo with `⌘Z` or the dock button. When the queue is empty, see "All triaged" with counts + Reset.
-7. **Adjust context** → Settings gear → ContextEditor → Save; the next generated brief uses it.
-8. **Feedback loop** → swipes write to the append-only `feedback` table; `brief.getLatest()` returns the latest per item so the UI never shows a stale vote.
+7. **Add to Calendar (action engine)** → on email cards where Gemini detected a meeting/task, tap **"Add to Calendar"**, review/edit title + start/end in the modal (nothing is auto-created), confirm → event is created in Google Calendar and the card's button flips to "Added".
+8. **Adjust context** → Settings gear → ContextEditor → Save; the next generated brief uses it.
+9. **Feedback loop** → swipes write to the append-only `feedback` table; `brief.getLatest()` returns the latest per item so the UI never shows a stale vote.
 
 ---
 
@@ -152,4 +155,6 @@ Key shapes:
 - **Deck ordering:** `SwipeDeck` shows the most important card on top. It reverses `data.items` (rank-ascending) via `orderedQueue()` in `swipe-deck.tsx` — if the deck ever shows the wrong card first, check that helper and the `queue[queue.length-1]` top-card convention.
 - **Deck remount semantics:** `SwipeDeck` is keyed by `data.id`, so the deck resets only on a *new* brief. TanStack refetches (e.g. after feedback) preserve the queue but sync feedback state onto remaining cards via a merge effect.
 - **Undo is UI-only** in the deck: it returns the card to the queue but does **not** mutate the feedback log (re-deciding simply appends a new row that latest-wins). This avoids recording a false signal for cards that had none.
+- **`suggested_action` is detection, not execution.** It comes from the LLM during `brief.generate` (optional schema field) and is persisted as JSON on `brief_items`. It is only surfaced in the UI when the item is an email; the actual calendar insert is a separate, always-confirmed user action (`calendar.createEvent`). Never auto-create an event.
+- **Modal times are local.** `add-to-calendar-button` converts Gemini's ISO `proposed_start/end` to `datetime-local` (user's local zone) for editing and back to ISO on confirm. Like `todayLocal()`, the proposal itself is best-effort on timezone — the confirm step is the safety net.
 - **Microsoft provider** is currently disabled in the UI ("Coming Soon"); OAuth config exists for both.

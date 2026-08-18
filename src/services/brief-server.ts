@@ -3,7 +3,7 @@ import type Database from 'better-sqlite3';
 import { getDb } from './database';
 import { generateBrief } from './context-engine';
 import type { BriefResult } from './context-engine';
-import type { BriefDetail, BriefItemDetail, FeedbackType } from '@/types';
+import type { BriefDetail, BriefItemDetail, FeedbackType, SuggestedAction } from '@/types';
 
 type BriefItemRow = {
   brief_item_id: number;
@@ -23,6 +23,7 @@ type BriefItemRow = {
   person_is_vip: number | null;
   project_id: number | null;
   project_name: string | null;
+  suggested_action: string | null;
 };
 
 type FeedbackRow = {
@@ -30,6 +31,23 @@ type FeedbackRow = {
   feedback_type: string;
   created_at: string;
 };
+
+function parseSuggestedAction(raw: string | null): SuggestedAction | null {
+  if (!raw) return null;
+  try {
+    const parsed = JSON.parse(raw) as SuggestedAction;
+    if (
+      typeof parsed.proposed_title !== 'string' ||
+      typeof parsed.proposed_start !== 'string' ||
+      typeof parsed.proposed_end !== 'string'
+    ) {
+      return null;
+    }
+    return parsed;
+  } catch {
+    return null;
+  }
+}
 
 export function getLatestBrief(db: Database.Database): BriefDetail | null {
   const brief = db.prepare(
@@ -44,6 +62,7 @@ export function getLatestBrief(db: Database.Database): BriefDetail | null {
       bi.rank,
       bi.reason,
       bi.score,
+      bi.suggested_action,
       si.id AS synced_item_id,
       si.source,
       si.title,
@@ -117,6 +136,7 @@ export function getLatestBrief(db: Database.Database): BriefDetail | null {
         ? { id: r.project_id, name: r.project_name }
         : null,
     feedback: feedbackByItem.get(r.brief_item_id) ?? null,
+    suggested_action: parseSuggestedAction(r.suggested_action),
   }));
 
   return { ...brief, items };
