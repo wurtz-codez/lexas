@@ -149,7 +149,7 @@ lexas/
 ## Git State
 
 - **Branch:** main
-- **Commits:** 12 (feat[BRIEF]: Matched the InputLink with the SQL columns so the dedup ket works and all the links reach Gemini instead of collapsing to one.) [latest: `68edc4d`]
+- **Commits:** 13 (IPC Surface) [latest: `ad85faa`]
 - **Last Updated:** 2026-08-15
 
 ---

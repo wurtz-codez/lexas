@@ -68,6 +68,7 @@ export type BriefItemDetail = {
   };
   person: { id: number; name: string; email: string | null; is_vip: boolean } | null;
   project: { id: number; name: string } | null;
+  feedback: { type: FeedbackType; created_at: string } | null;
 };
 
 export type BriefDetail = {

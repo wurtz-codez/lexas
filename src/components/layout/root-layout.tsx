@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Sun, Moon, Settings, X } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { ContextEditor } from '@/features/settings/components/context-editor';
+import { BriefView } from '@/features/brief/components/brief-view';
 import type { OnboardingStatus } from '@/types';
 
 function isEmpty(status: OnboardingStatus | null): boolean {
@@ -76,8 +77,10 @@ export function RootLayout({ onboarding }: { onboarding: OnboardingStatus | null
           </div>
         </main>
       ) : (
-        <main className="flex-1">
-          <div className="container mx-auto p-4" />
+        <main className="flex-1 overflow-auto">
+          <div className="container mx-auto p-4">
+            <BriefView />
+          </div>
         </main>
       )}
     </div>

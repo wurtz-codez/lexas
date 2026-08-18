@@ -3,7 +3,7 @@ import type Database from 'better-sqlite3';
 import { getDb } from './database';
 import { generateBrief } from './context-engine';
 import type { BriefResult } from './context-engine';
-import type { BriefDetail, BriefItemDetail } from '@/types';
+import type { BriefDetail, BriefItemDetail, FeedbackType } from '@/types';
 
 type BriefItemRow = {
   brief_item_id: number;
@@ -23,6 +23,12 @@ type BriefItemRow = {
   person_is_vip: number | null;
   project_id: number | null;
   project_name: string | null;
+};
+
+type FeedbackRow = {
+  brief_item_id: number;
+  feedback_type: string;
+  created_at: string;
 };
 
 export function getLatestBrief(db: Database.Database): BriefDetail | null {
@@ -59,6 +65,30 @@ export function getLatestBrief(db: Database.Database): BriefDetail | null {
     ORDER BY bi.rank ASC
   `).all(brief.id) as BriefItemRow[];
 
+  const itemIds = rows.map((r) => r.brief_item_id);
+  const feedbackByItem = new Map<number, { type: FeedbackType; created_at: string }>();
+  if (itemIds.length > 0) {
+    // Append-only log: fetch all feedback for these items ordered newest-first and
+    // keep the FIRST row per brief_item_id (= the latest). Avoids GROUP BY bare-column
+    // selection, which SQLite does not guarantee. Deliberately not MAX(id) in SQL so
+    // the pick-latest logic is unit-testable with a mock db (see brief-server.test.ts).
+    const feedbackRows = db.prepare(`
+      SELECT brief_item_id, feedback_type, created_at
+      FROM feedback
+      WHERE brief_item_id IN (${itemIds.map(() => '?').join(',')})
+      ORDER BY id DESC
+    `).all(...itemIds) as FeedbackRow[];
+
+    for (const f of feedbackRows) {
+      if (!feedbackByItem.has(f.brief_item_id)) {
+        feedbackByItem.set(f.brief_item_id, {
+          type: f.feedback_type as FeedbackType,
+          created_at: f.created_at,
+        });
+      }
+    }
+  }
+
   const items: BriefItemDetail[] = rows.map((r) => ({
     id: r.brief_item_id,
     synced_item_id: r.synced_item_id,
@@ -86,6 +116,7 @@ export function getLatestBrief(db: Database.Database): BriefDetail | null {
       r.project_id !== null && r.project_name !== null
         ? { id: r.project_id, name: r.project_name }
         : null,
+    feedback: feedbackByItem.get(r.brief_item_id) ?? null,
   }));
 
   return { ...brief, items };
