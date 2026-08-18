@@ -64,7 +64,7 @@ Exposed in `src/preload.ts`, typed in the `Window` global of `src/types/index.ts
 | `sync`      | `gmail()` / `calendar()`            | `SyncResult`                         | `sync-server.ts`                    |
 |             | `correlate()`                       | `CorrelationResult`                  | `sync-server.ts`                    |
 |             | `runAll()`                          | `RunAllSyncResult`                   | `sync-server.ts` (best-effort)      |
-| `brief`     | `generate(date)`                    | `BriefResult`                        | `brief-server.ts` / `context-engine`|
+| `brief`     | `generate(date, tzOffsetMinutes)`   | `BriefResult`                        | `brief-server.ts` / `context-engine`|
 |             | `getLatest()`                       | `BriefDetail \| null`                | `brief-server.ts`                   |
 | `feedback`  | `submit(briefItemId, type)`         | `void`                               | `feedback-server.ts`                |
 | `calendar`  | `createEvent(details)`              | `CreateEventResult`                  | `calendar-server.ts`                |
@@ -119,6 +119,7 @@ Key shapes:
 - **`swipe-card.tsx`** — front card: `motion` drag on `x` with `dragElastic={0.7}`, tilt via `useTransform(x, [-200,200], [-16,16])`, spring-back under threshold, fly-off beyond 150px/velocity 700. Emerald **Keep** badge (right drag) and slate **Archive** badge (left drag) fade in with drag. `CardBody` renders avatar/initials, sender + email, time pill, category pill (VIP → project → source), feedback chip ("Kept"/"Archived"), subject, snippet, **"Why this matters"** (the `reason` field), and source/rank meta. `BackgroundCard` renders the stack behind it (scaled down, blurred, dimmed).
 - **`action-dock.tsx`** — frosted dock: Archive (left), Undo (center), Keep (right).
 - **`add-to-calendar-button.tsx`** — Action Engine affordance. Rendered on the front card only when `item.item.source === 'email'` **and** `item.suggested_action` exists (Gemini-detected meeting/task). Opens a confirmation `Dialog` with **editable title + start/end** (local-time `datetime-local`, converted to/from ISO), Cancel/Add. On confirm → `calendar.createEvent` → success disables the button ("Added") + writes the `calendar_actions` row backend-side. `onPointerDown` stops propagation so it never starts a card drag.
+- **`reviewed-list.tsx`** — "Reviewed" section rendered below the deck: every item with `item.feedback !== null` (already swiped/decided this brief), sorted by most recent feedback first. Each row shows source, title, time/sender, the current vote chip ("Kept"/"Archived"), and **thumbs to change the vote** (appends a new `feedback` row; latest-wins). Hidden when nothing has been reviewed. Changes go through the same `useSubmitFeedback` optimistic path as swipes.
 - **`swipe-deck.tsx`** — owns the local `queue`/`history`/`counts`. Decisions call `onDecision(item, action)` (mapped in `BriefView` to `feedback.submit(..., 'important'|'not_important')`); on failure the card is returned to the queue. Keyboard: `←`/`H` archive, `→`/`L` keep, `⌘Z`/`Ctrl+Z` undo (ignored while an `INPUT`/`TEXTAREA`/`SELECT` is focused, e.g. the calendar modal). Zero state = **"All triaged"** card with kept/archived counts + Reset (rebuilds the queue in importance order).
 
 > **Product decision:** the brief is **triage via swipe deck** (deliberate user choice). Every card gets a keep/archive verdict; keep records `important`, archive records `not_important`. A ranked-highlights list was briefly tried and reverted in favor of this interaction.
@@ -143,15 +144,16 @@ Key shapes:
 5. **Refresh** → button runs `sync.runAll()` (Gmail + Calendar + correlation, best-effort) then `brief.generate(today)` then refetches. Partial sync failures surface as `Sync had issues: <specific step message>`.
 6. **Triage** → the most important mail is on top. Swipe each card **right/→/L** to keep (records `important`), **left/←/H** to archive (records `not_important`). Undo with `⌘Z` or the dock button. When the queue is empty, see "All triaged" with counts + Reset.
 7. **Add to Calendar (action engine)** → on email cards where Gemini detected a meeting/task, tap **"Add to Calendar"**, review/edit title + start/end in the modal (nothing is auto-created), confirm → event is created in Google Calendar and the card's button flips to "Added".
-8. **Adjust context** → Settings gear → ContextEditor → Save; the next generated brief uses it.
-9. **Feedback loop** → swipes write to the append-only `feedback` table; `brief.getLatest()` returns the latest per item so the UI never shows a stale vote.
+8. **Review votes** → below the deck, the **Reviewed** section lists everything you've already decided. Tap a thumb to flip your vote (records a new append-only row; latest wins).
+9. **Adjust context** → Settings gear → ContextEditor → Save; the next generated brief uses it.
+10. **Feedback loop** → swipes and reviewed-vote changes write to the append-only `feedback` table; `brief.getLatest()` returns the latest per item so the UI never shows a stale vote.
 
 ---
 
 ## Frontend Gotchas (read before touching the UI)
 
 - **Feedback is an append-only log.** `feedback.submit` keeps both rows on an up→down flip; only consecutive identical taps are suppressed. `brief.getLatest()` already returns the *latest* row per item — always render from `item.feedback`, never aggregate raw feedback rows on the client.
-- **`todayLocal()` UTC boundary** (`features/brief/hooks.ts`): briefs are generated for the **local** calendar day, but the ranking engine matches `date(occurred_at)` in UTC. A user in a timezone ahead of UTC syncing ~9pm–midnight local can get a brief dated for the wrong day. If "brief showed up on the wrong day" is ever reported, fix starts here.
+- **`todayLocal()` is the LOCAL day; the engine matches a UTC window.** `brief.generate(date, tzOffsetMinutes)` (renderer passes `new Date().getTimezoneOffset()`) and `context-engine.ts`'s `localDayWindowUtc` convert the local calendar day into a `[start, end)` UTC window over `occurred_at`. This fixed a real bug where a mail sent early morning IST (UTC date = previous day) was dropped from today's brief. If items are missing again, check `localDayWindowUtc` and the renderer's offset first.
 - **Deck ordering:** `SwipeDeck` shows the most important card on top. It reverses `data.items` (rank-ascending) via `orderedQueue()` in `swipe-deck.tsx` — if the deck ever shows the wrong card first, check that helper and the `queue[queue.length-1]` top-card convention.
 - **Deck remount semantics:** `SwipeDeck` is keyed by `data.id`, so the deck resets only on a *new* brief. TanStack refetches (e.g. after feedback) preserve the queue but sync feedback state onto remaining cards via a merge effect.
 - **Undo is UI-only** in the deck: it returns the card to the queue but does **not** mutate the feedback log (re-deciding simply appends a new row that latest-wins). This avoids recording a false signal for cards that had none.

@@ -125,7 +125,7 @@ declare global {
         runAll: () => Promise<RunAllSyncResult>;
       };
       brief: {
-        generate: (date: string) => Promise<BriefResult>;
+        generate: (date: string, tzOffsetMinutes: number) => Promise<BriefResult>;
         getLatest: () => Promise<BriefDetail | null>;
       };
       feedback: {

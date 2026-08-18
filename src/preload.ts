@@ -19,7 +19,7 @@ contextBridge.exposeInMainWorld('electron', {
     runAll: () => ipcRenderer.invoke('sync:runAll'),
   },
   brief: {
-    generate: (date: string) => ipcRenderer.invoke('brief:generate', date),
+    generate: (date: string, tzOffsetMinutes: number) => ipcRenderer.invoke('brief:generate', date, tzOffsetMinutes),
     getLatest: () => ipcRenderer.invoke('brief:getLatest'),
   },
   feedback: {

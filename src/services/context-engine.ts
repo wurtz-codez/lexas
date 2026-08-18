@@ -44,6 +44,21 @@ type InputLink = {
   link_type: string;
 };
 
+// Items store occurred_at as UTC ISO (e.g. "...T20:05:00.000Z"). The brief is for
+// the user's LOCAL calendar day, so `date(occurred_at)` (which yields the UTC date)
+// is the wrong filter — a mail sent 1am IST on Aug 19 has a UTC date of Aug 18.
+// Instead compute the [start, end) UTC window covering the local day using the
+// renderer's timezone offset (minutes to add to local time to get UTC).
+function localDayWindowUtc(date: string, tzOffsetMinutes: number): { startIso: string; endIso: string } {
+  const [y, m, d] = date.split('-').map(Number);
+  const startMs = Date.UTC(y, m - 1, d) + tzOffsetMinutes * 60_000;
+  const endMs = Date.UTC(y, m - 1, d + 1) + tzOffsetMinutes * 60_000;
+  return {
+    startIso: new Date(startMs).toISOString(),
+    endIso: new Date(endMs).toISOString(),
+  };
+}
+
 function buildSystemPrompt(role: string | null, focusSummary: string | null, vips: { name: string; email: string | null }[]): string {
   const parts: string[] = ['You are Lexas, an executive assistant ranking engine. Rank items by importance considering the user\'s role, focus areas, VIP contacts, and how items connect to each other.\n'];
 
@@ -87,6 +102,7 @@ function buildUserMessage(items: Record<string, unknown>[], links: InputLink[]):
 export async function generateBrief(
   db: Database.Database,
   date: string,
+  tzOffsetMinutes: number,
 ): Promise<BriefResult> {
   const userContext = db.prepare(
     'SELECT role, focus_summary FROM user_context WHERE id = 1',
@@ -95,6 +111,8 @@ export async function generateBrief(
   const vips = db.prepare(
     'SELECT name, email FROM people WHERE is_vip = 1 ORDER BY name',
   ).all() as { name: string; email: string | null }[];
+
+  const { startIso, endIso } = localDayWindowUtc(date, tzOffsetMinutes);
 
   const items = db.prepare(`
     SELECT
@@ -110,9 +128,9 @@ export async function generateBrief(
     FROM synced_items si
     LEFT JOIN people p ON si.person_id = p.id
     LEFT JOIN projects pr ON si.project_id = pr.id
-    WHERE date(si.occurred_at) = ?
+    WHERE si.occurred_at >= ? AND si.occurred_at < ?
     ORDER BY si.occurred_at ASC
-  `).all(date) as InputItem[];
+  `).all(startIso, endIso) as InputItem[];
 
   const itemIds = items.map((i) => i.id);
   const links = itemIds.length > 0

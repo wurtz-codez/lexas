@@ -104,7 +104,7 @@ describe('generateBrief', () => {
     });
 
     const { generateBrief } = await import('../context-engine');
-    const result = await generateBrief(db, '2026-07-21');
+    const result = await generateBrief(db, '2026-07-21', 0);
 
     expect(result.brief_id).toBe(42);
     expect(result.items_ranked).toBe(1);
@@ -131,7 +131,7 @@ describe('generateBrief', () => {
     });
 
     const { generateBrief } = await import('../context-engine');
-    const result = await generateBrief(db, '2026-07-21');
+    const result = await generateBrief(db, '2026-07-21', 0);
 
     expect(result.items_ranked).toBe(0);
     expect(result.brief_id).toBe(42);
@@ -150,7 +150,7 @@ describe('generateBrief', () => {
     });
 
     const { generateBrief } = await import('../context-engine');
-    const result = await generateBrief(db, '2026-07-21');
+    const result = await generateBrief(db, '2026-07-21', 0);
 
     expect(result.brief_id).toBe(42);
     expect(result.items_ranked).toBe(1);
@@ -167,7 +167,7 @@ describe('generateBrief', () => {
     });
 
     const { generateBrief } = await import('../context-engine');
-    await expect(generateBrief(db, '2026-07-21')).rejects.toThrow(/truncated/);
+    await expect(generateBrief(db, '2026-07-21', 0)).rejects.toThrow(/truncated/);
   });
 
   it('throws descriptive error when Gemini returns invalid JSON', async () => {
@@ -181,7 +181,7 @@ describe('generateBrief', () => {
     });
 
     const { generateBrief } = await import('../context-engine');
-    await expect(generateBrief(db, '2026-07-21')).rejects.toThrow(/JSON parse failed/);
+    await expect(generateBrief(db, '2026-07-21', 0)).rejects.toThrow(/JSON parse failed/);
   });
 
   it('parses clean JSON from structured output mode (no markdown fences)', async () => {
@@ -195,7 +195,7 @@ describe('generateBrief', () => {
     });
 
     const { generateBrief } = await import('../context-engine');
-    const result = await generateBrief(db, '2026-07-21');
+    const result = await generateBrief(db, '2026-07-21', 0);
     expect(result.items_ranked).toBe(1);
   });
 
@@ -213,7 +213,7 @@ describe('generateBrief', () => {
     });
 
     const { generateBrief } = await import('../context-engine');
-    const result = await generateBrief(db, '2026-07-21');
+    const result = await generateBrief(db, '2026-07-21', 0);
     expect(result.items_ranked).toBe(1);
   });
 
@@ -228,7 +228,7 @@ describe('generateBrief', () => {
     });
 
     const { generateBrief } = await import('../context-engine');
-    const result = await generateBrief(db, '2026-07-21');
+    const result = await generateBrief(db, '2026-07-21', 0);
     expect(result.items_ranked).toBe(1);
   });
 
@@ -255,7 +255,7 @@ describe('generateBrief', () => {
     });
 
     const { generateBrief } = await import('../context-engine');
-    await generateBrief(db, '2026-07-21');
+    await generateBrief(db, '2026-07-21', 0);
 
     const prepare = db.prepare as ReturnType<typeof vi.fn>;
     const idx = prepare.mock.calls.findIndex(
@@ -290,7 +290,7 @@ describe('generateBrief', () => {
     });
 
     const { generateBrief } = await import('../context-engine');
-    await generateBrief(db, '2026-07-21');
+    await generateBrief(db, '2026-07-21', 0);
 
     const prepare = db.prepare as ReturnType<typeof vi.fn>;
     const idx = prepare.mock.calls.findIndex(
@@ -312,7 +312,7 @@ describe('generateBrief', () => {
     });
 
     const { generateBrief } = await import('../context-engine');
-    await expect(generateBrief(db, '2026-07-21')).rejects.toThrow(/GEMINI_API_KEY/);
+    await expect(generateBrief(db, '2026-07-21', 0)).rejects.toThrow(/GEMINI_API_KEY/);
 
     vi.mocked(getGeminiApiKey).mockReturnValue('sk-test-key');
   });
@@ -330,7 +330,7 @@ describe('generateBrief', () => {
     });
 
     const { generateBrief } = await import('../context-engine');
-    await generateBrief(db, '2026-07-21');
+    await generateBrief(db, '2026-07-21', 0);
 
     expect(mockGenerateContent).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -352,12 +352,41 @@ describe('generateBrief', () => {
     });
 
     const { generateBrief } = await import('../context-engine');
-    await generateBrief(db, '2026-07-21');
+    await generateBrief(db, '2026-07-21', 0);
 
     expect(mockGenerateContent).toHaveBeenCalledWith(
       expect.objectContaining({
         generationConfig: expect.objectContaining({ maxOutputTokens: 32000 }),
       }),
     );
+  });
+
+  it('queries the local-day UTC window, not the UTC date', async () => {
+    mockGeminiResponse('[]');
+
+    const db = createMockDb({
+      userContext: { role: null, focus_summary: null },
+      vips: [],
+      items: [],
+      links: [],
+    });
+
+    const { generateBrief } = await import('../context-engine');
+    // IST (UTC+5:30) => getTimezoneOffset() = -330. Local Aug 19 spans
+    // [Aug 18 18:30Z, Aug 19 18:30Z), which includes a mail sent 1:35am IST
+    // (stored as 2026-08-18T20:05Z).
+    await generateBrief(db, '2026-08-19', -330);
+
+    const prepare = db.prepare as ReturnType<typeof vi.fn>;
+    const syncedCall = prepare.mock.calls.find(
+      (c: [string]) =>
+        c[0].toLowerCase().includes('from synced_items') &&
+        c[0].toLowerCase().includes('occurred_at'),
+    );
+    expect(syncedCall).toBeDefined();
+
+    const idx = prepare.mock.calls.indexOf(syncedCall);
+    const all = prepare.mock.results[idx].value.all as ReturnType<typeof vi.fn>;
+    expect(all).toHaveBeenCalledWith('2026-08-18T18:30:00.000Z', '2026-08-19T18:30:00.000Z');
   });
 });

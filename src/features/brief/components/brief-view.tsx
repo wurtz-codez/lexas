@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { useBrief, useRefreshBrief, useSubmitFeedback, todayLocal } from '@/features/brief/hooks';
 import { SwipeDeck } from '@/features/brief/components/swipe-deck';
+import { ReviewedList } from '@/features/brief/components/reviewed-list';
 import type { BriefItemDetail } from '@/types';
 import type { TriageAction } from '@/features/brief/components/deck-types';
 
@@ -22,7 +23,7 @@ export function BriefView() {
   const handleRefresh = useCallback(async () => {
     try {
       const result = await refresh.mutateAsync();
-      if (result.errors.length > 0) {
+      if (result.errors.length > 0) { 
         toast.error(`Sync had issues: ${result.errors.join('; ')}`);
       } else {
         toast.success('Brief updated');
@@ -38,6 +39,13 @@ export function BriefView() {
         briefItemId: item.id,
         type: action === 'keep' ? 'important' : 'not_important',
       }),
+    [feedback],
+  );
+
+  const handleFeedback = useCallback(
+    (briefItemId: number, type: 'important' | 'not_important') => {
+      feedback.mutate({ briefItemId, type });
+    },
     [feedback],
   );
 
@@ -97,7 +105,14 @@ export function BriefView() {
           </CardContent>
         </Card>
       ) : (
-        <SwipeDeck key={data.id} items={data.items} onDecision={handleDecision} />
+        <div className="space-y-8">
+          <SwipeDeck key={data.id} items={data.items} onDecision={handleDecision} />
+          <ReviewedList
+            items={data.items}
+            onFeedback={handleFeedback}
+            feedbackPending={feedback.isPending}
+          />
+        </div>
       )}
     </div>
   );

@@ -143,10 +143,10 @@ export function getLatestBrief(db: Database.Database): BriefDetail | null {
 }
 
 export function registerBriefHandlers(): void {
-  ipcMain.handle('brief:generate', async (_event, date: string): Promise<BriefResult> => {
-    process.stderr.write(`[brief:generate] Generating brief for ${date}\n`);
+  ipcMain.handle('brief:generate', async (_event, date: string, tzOffsetMinutes: number): Promise<BriefResult> => {
+    process.stderr.write(`[brief:generate] Generating brief for ${date} (tz offset ${tzOffsetMinutes})\n`);
     const db = getDb();
-    return generateBrief(db, date);
+    return generateBrief(db, date, tzOffsetMinutes);
   });
 
   ipcMain.handle('brief:getLatest', async (): Promise<BriefDetail | null> => {

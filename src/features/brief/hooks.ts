@@ -4,11 +4,10 @@ import type { BriefDetail, CreateEventRequest, FeedbackType, RunAllSyncResult } 
 
 const BRIEF_KEY = ['brief', 'latest'] as const;
 
-// todayLocal() caveat: brief_date is the LOCAL calendar day, but the ranking
-// engine matches date(si.occurred_at) in UTC. A user syncing ~9pm-midnight local
-// in a timezone ahead of UTC (mirrored behind UTC) can get a brief generated for
-// the wrong calendar date right at that boundary. If "brief showed up on the
-// wrong day" is ever reported, revisit timezone handling here first.
+// todayLocal() returns the user's LOCAL calendar day. The brief engine matches a
+// UTC window covering that local day (see localDayWindowUtc in context-engine.ts),
+// so local vs UTC boundary no longer drops near-midnight items. The renderer's
+// timezone offset is passed alongside the date when generating.
 export function todayLocal(): string {
   const d = new Date();
   const y = d.getFullYear();
@@ -30,7 +29,7 @@ export function useRefreshBrief() {
   return useMutation({
     mutationFn: async (): Promise<RunAllSyncResult> => {
       const sync = await window.electron.sync.runAll();
-      await window.electron.brief.generate(todayLocal());
+      await window.electron.brief.generate(todayLocal(), new Date().getTimezoneOffset());
       return sync;
     },
     onSuccess: async () => {
