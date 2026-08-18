@@ -127,6 +127,7 @@ lexas/
 - [x] Keyboard swipe shortcuts ignored while editing inputs (calendar modal)
 - [x] **Reviewed section** (`reviewed-list.tsx`) — already-decided mails shown below the deck with editable thumbs; deck shows only un-reviewed (new + skipped) mails
 - [x] Feedback re-keyed from `brief_item_id` → `synced_item_id` (migration) so votes survive brief regeneration on refresh
+- [x] Brief is **emails-only for now** — calendar events excluded from generation (`context-engine.ts`) and `getLatest` (`brief-server.ts`); still synced/correlated but not rendered as cards
 
 ### Not Yet Implemented
 - [ ] Application-specific business logic
@@ -155,7 +156,7 @@ lexas/
 ## Git State
 
 - **Branch:** main
-- **Commits:** 17 (feat[CALENDAR]: Added Calendar event feature.) [latest: `4bff07b`]
+- **Commits:** 18 (fix: Removed the reset option and fixed the refresh button issue which was causing the system to create a whole new brief over and over again.) [latest: `5a5cb91`]
 - **Last Updated:** 2026-08-19
 
 ---

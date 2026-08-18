@@ -80,7 +80,7 @@ export function getLatestBrief(db: Database.Database): BriefDetail | null {
     JOIN synced_items si ON si.id = bi.synced_item_id
     LEFT JOIN people p ON p.id = si.person_id
     LEFT JOIN projects pr ON pr.id = si.project_id
-    WHERE bi.brief_id = ?
+    WHERE bi.brief_id = ? AND si.source = 'email'
     ORDER BY bi.rank ASC
   `).all(brief.id) as BriefItemRow[];
 

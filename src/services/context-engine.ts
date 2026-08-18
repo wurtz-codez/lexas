@@ -129,6 +129,7 @@ export async function generateBrief(
     LEFT JOIN people p ON si.person_id = p.id
     LEFT JOIN projects pr ON si.project_id = pr.id
     WHERE si.occurred_at >= ? AND si.occurred_at < ?
+      AND si.source = 'email'
     ORDER BY si.occurred_at ASC
   `).all(startIso, endIso) as InputItem[];
 

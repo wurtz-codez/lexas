@@ -115,6 +115,8 @@ Key shapes:
 
 **Deck vs Reviewed split:** the deck is fed **only un-reviewed items** (`data.items.filter(item => item.feedback === null)`). Once an item has any feedback it leaves the deck and appears in the **Reviewed** list below — so the deck always shows new mails to triage, never ones already decided. Because feedback is keyed to the mail, **Refresh keeps this split intact**: already-reviewed mails stay in Reviewed (they don't come back into the deck), while skipped + newly-synced mails populate the deck.
 
+> **Emails only (for now):** calendar events are **excluded from the brief entirely** — the brief engine's item query filters `si.source = 'email'` (`context-engine.ts`) and `getLatest` filters the same (`brief-server.ts`). Calendar events are still synced/stored and correlated; they just aren't rendered as cards. (Reintroducing them elsewhere is pending a decision on where.)
+
 **Deck ordering:** the most important mail is on top. `SwipeDeck` builds its queue from `data.items` (rank-ascending from `getLatest`) reversed via `orderedQueue()` (`sort((a, b) => b.rank - a.rank)`), so **rank 1 is the first card** you see and swipe, followed by progressively less important ones.
 
 **Components (`features/brief/components/`):**

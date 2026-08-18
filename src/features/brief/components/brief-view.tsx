@@ -53,6 +53,10 @@ export function BriefView() {
     ? formatBriefDate(data.brief_date)
     : formatBriefDate(todayLocal());
 
+  // Emails-only for now: calendar events are synced/correlated but not shown as
+  // cards. Renderer-side filter as a guard alongside the backend filters.
+  const emailItems = data?.items.filter((it) => it.item.source === 'email') ?? [];
+
   return (
     <div className="mx-auto max-w-2xl space-y-4 py-6">
       <div className="flex items-center justify-between gap-3">
@@ -94,7 +98,7 @@ export function BriefView() {
             </p>
           </CardContent>
         </Card>
-      ) : data.items.length === 0 ? (
+      ) : emailItems.length === 0 ? (
         <Card>
           <CardContent className="flex flex-col items-center gap-2 py-12 text-center">
             <CalendarCheck2 className="size-8 text-muted-foreground" />
@@ -108,11 +112,11 @@ export function BriefView() {
         <div className="space-y-8">
           <SwipeDeck
             key={data.id}
-            items={data.items.filter((item) => item.feedback === null)}
+            items={emailItems.filter((item) => item.feedback === null)}
             onDecision={handleDecision}
           />
           <ReviewedList
-            items={data.items}
+            items={emailItems}
             onFeedback={handleFeedback}
             feedbackPending={feedback.isPending}
           />

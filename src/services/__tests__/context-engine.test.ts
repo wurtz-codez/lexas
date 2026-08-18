@@ -384,6 +384,7 @@ describe('generateBrief', () => {
         c[0].toLowerCase().includes('occurred_at'),
     );
     expect(syncedCall).toBeDefined();
+    expect(String(syncedCall[0])).toContain("si.source = 'email'");
 
     const idx = prepare.mock.calls.indexOf(syncedCall);
     const all = prepare.mock.results[idx].value.all as ReturnType<typeof vi.fn>;
