@@ -23,7 +23,7 @@ contextBridge.exposeInMainWorld('electron', {
     getLatest: () => ipcRenderer.invoke('brief:getLatest'),
   },
   feedback: {
-    submit: (briefItemId: number, type: FeedbackType) => ipcRenderer.invoke('feedback:submit', briefItemId, type),
+    submit: (syncedItemId: number, type: FeedbackType) => ipcRenderer.invoke('feedback:submit', syncedItemId, type),
   },
   calendar: {
     createEvent: (details: CreateEventRequest) => ipcRenderer.invoke('calendar:createEvent', details),

@@ -125,6 +125,8 @@ lexas/
 - [x] Confirmation modal (`add-to-calendar-button.tsx`) — editable title + local-time start/end, confirm-then-create (never auto-create)
 - [x] `calendar.createEvent` IPC → Google Calendar `events.insert`, records row in `calendar_actions` (synced_item_id + created_event_external_id)
 - [x] Keyboard swipe shortcuts ignored while editing inputs (calendar modal)
+- [x] **Reviewed section** (`reviewed-list.tsx`) — already-decided mails shown below the deck with editable thumbs; deck shows only un-reviewed (new + skipped) mails
+- [x] Feedback re-keyed from `brief_item_id` → `synced_item_id` (migration) so votes survive brief regeneration on refresh
 
 ### Not Yet Implemented
 - [ ] Application-specific business logic
@@ -153,7 +155,7 @@ lexas/
 ## Git State
 
 - **Branch:** main
-- **Commits:** 16 (Action Engine) [latest: `854bf95`]
+- **Commits:** 17 (feat[CALENDAR]: Added Calendar event feature.) [latest: `4bff07b`]
 - **Last Updated:** 2026-08-19
 
 ---
@@ -173,4 +175,4 @@ lexas/
 - Client IDs must be set in `.env`: `GOOGLE_CLIENT_ID`, `MICROSOFT_CLIENT_ID`
 - No test framework is configured
 - No `.env` or environment-specific files exist
-- **Feedback table is an append-only log**: thumbs-up then thumbs-down keeps BOTH rows (only consecutive identical taps are suppressed in `feedback:submit`). Any future code reading feedback to answer "what's the current signal on this brief item?" MUST take the latest row per `brief_item_id` (`ORDER BY created_at DESC / id DESC LIMIT 1`) — never count all rows as independent votes. Rule also documented in a comment in `src/services/feedback-server.ts`.
+- **Feedback table is an append-only log keyed to the MAIL (`synced_item_id`), NOT the transient brief row** — so "already reviewed" survives brief regeneration on refresh. thumbs-up then thumbs-down keeps BOTH rows (only consecutive identical taps are suppressed in `feedback:submit`). Any future code reading feedback to answer "what's the current signal on this item?" MUST take the latest row per `synced_item_id` (`ORDER BY created_at DESC / id DESC LIMIT 1`) — never count all rows as independent votes. Rule also documented in a comment in `src/services/feedback-server.ts`.

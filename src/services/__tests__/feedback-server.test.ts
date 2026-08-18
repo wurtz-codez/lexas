@@ -2,7 +2,7 @@ import { describe, it, expect, vi } from 'vitest';
 import type Database from 'better-sqlite3';
 
 type InsertCall = { sql: string; params: unknown[] };
-type FeedbackRow = { id: number; brief_item_id: number; feedback_type: string };
+type FeedbackRow = { id: number; synced_item_id: number; feedback_type: string };
 
 function createMockDb(setup: {
   exists?: boolean;
@@ -15,7 +15,7 @@ function createMockDb(setup: {
   const prepare = vi.fn().mockImplementation((sql: string) => {
     const trimmed = sql.trim();
 
-    if (trimmed.includes('FROM brief_items')) {
+    if (trimmed.includes('FROM synced_items')) {
       return { get: vi.fn(() => (setup.exists ? { id: 5 } : undefined)) };
     }
 
@@ -29,7 +29,7 @@ function createMockDb(setup: {
           inserts.push({ sql, params });
           log.push({
             id: nextId++,
-            brief_item_id: params[0] as number,
+            synced_item_id: params[0] as number,
             feedback_type: params[1] as string,
           });
           return { changes: 1 };
@@ -61,14 +61,14 @@ describe('submitFeedback', () => {
     expect(() => submitFeedback(db, 5, 'bogus')).toThrow(/invalid type/);
   });
 
-  it('throws when brief_item_id does not exist', async () => {
+  it('throws when synced_item_id does not exist', async () => {
     const { db } = createMockDb({ exists: false });
 
     const { submitFeedback } = await import('../feedback-server');
     expect(() => submitFeedback(db, 999, 'important')).toThrow(/does not exist/);
   });
 
-  it('throws on non-integer brief_item_id', async () => {
+  it('throws on non-integer synced_item_id', async () => {
     const { db } = createMockDb({ exists: true });
 
     const { submitFeedback } = await import('../feedback-server');
@@ -76,7 +76,7 @@ describe('submitFeedback', () => {
   });
 
   it('suppresses consecutive duplicate feedback', async () => {
-    const { db, inserts } = createMockDb({ exists: true, seed: [{ id: 1, brief_item_id: 5, feedback_type: 'important' }] });
+    const { db, inserts } = createMockDb({ exists: true, seed: [{ id: 1, synced_item_id: 5, feedback_type: 'important' }] });
 
     const { submitFeedback } = await import('../feedback-server');
     submitFeedback(db, 5, 'important');
@@ -92,8 +92,8 @@ describe('submitFeedback', () => {
     submitFeedback(db, 5, 'not_important');
 
     expect(log).toEqual([
-      { id: 1, brief_item_id: 5, feedback_type: 'important' },
-      { id: 2, brief_item_id: 5, feedback_type: 'not_important' },
+      { id: 1, synced_item_id: 5, feedback_type: 'important' },
+      { id: 2, synced_item_id: 5, feedback_type: 'not_important' },
     ]);
   });
 
@@ -106,9 +106,9 @@ describe('submitFeedback', () => {
     submitFeedback(db, 5, 'important');
 
     expect(log).toEqual([
-      { id: 1, brief_item_id: 5, feedback_type: 'important' },
-      { id: 2, brief_item_id: 5, feedback_type: 'not_important' },
-      { id: 3, brief_item_id: 5, feedback_type: 'important' },
+      { id: 1, synced_item_id: 5, feedback_type: 'important' },
+      { id: 2, synced_item_id: 5, feedback_type: 'not_important' },
+      { id: 3, synced_item_id: 5, feedback_type: 'important' },
     ]);
   });
 });

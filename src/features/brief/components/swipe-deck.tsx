@@ -1,6 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { CheckCheck } from 'lucide-react';
-import { Button } from '@/components/ui/button';
 import type { BriefItemDetail } from '@/types';
 import { ActionDock } from './action-dock';
 import { BackgroundCard, SwipeCard } from './swipe-card';
@@ -15,15 +14,7 @@ function orderedQueue(items: BriefItemDetail[]): BriefItemDetail[] {
   return [...items].sort((a, b) => b.rank - a.rank);
 }
 
-function TriageComplete({
-  kept,
-  archived,
-  onReset,
-}: {
-  kept: number;
-  archived: number;
-  onReset: () => void;
-}) {
+function TriageComplete({ kept, archived }: { kept: number; archived: number }) {
   return (
     <div className="mx-auto flex w-full max-w-xl flex-col items-center gap-3 rounded-3xl border border-white/40 bg-white/40 p-10 text-center shadow-2xl shadow-black/5 backdrop-blur-xl dark:bg-slate-900/40">
       <div className="flex h-14 w-14 items-center justify-center rounded-full border border-white/40 bg-white/40 shadow-lg shadow-black/5 backdrop-blur-md">
@@ -33,9 +24,6 @@ function TriageComplete({
       <p className="text-sm text-muted-foreground">
         {kept} kept · {archived} archived
       </p>
-      <Button variant="outline" onClick={onReset} className="mt-2">
-        Reset
-      </Button>
     </div>
   );
 }
@@ -102,15 +90,7 @@ export function SwipeDeck({
     setCounts((c) => ({ ...c, [last.action]: c[last.action] - 1 }));
   }, []);
 
-  const reset = useCallback(() => {
-    setQueue(orderedQueue(items));
-    setHistory([]);
-    setCounts({ keep: 0, archive: 0 });
-    setExitSignal(null);
-  }, [items]);
-
-  useEffect(() => {
-    const onKey = (e: KeyboardEvent) => {
+  useEffect(() => {    const onKey = (e: KeyboardEvent) => {
       const target = e.target as HTMLElement | null;
       const tag = target?.tagName;
       if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return;
@@ -134,7 +114,7 @@ export function SwipeDeck({
   }, [trigger, undo]);
 
   if (queue.length === 0) {
-    return <TriageComplete kept={counts.keep} archived={counts.archive} onReset={reset} />;
+    return <TriageComplete kept={counts.keep} archived={counts.archive} />;
   }
 
   return (

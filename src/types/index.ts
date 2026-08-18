@@ -129,7 +129,7 @@ declare global {
         getLatest: () => Promise<BriefDetail | null>;
       };
       feedback: {
-        submit: (briefItemId: number, type: FeedbackType) => Promise<void>;
+        submit: (syncedItemId: number, type: FeedbackType) => Promise<void>;
       };
       calendar: {
         createEvent: (details: CreateEventRequest) => Promise<CreateEventResult>;

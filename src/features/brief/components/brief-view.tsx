@@ -36,15 +36,15 @@ export function BriefView() {
   const handleDecision = useCallback(
     (item: BriefItemDetail, action: TriageAction) =>
       feedback.mutateAsync({
-        briefItemId: item.id,
+        syncedItemId: item.synced_item_id,
         type: action === 'keep' ? 'important' : 'not_important',
       }),
     [feedback],
   );
 
   const handleFeedback = useCallback(
-    (briefItemId: number, type: 'important' | 'not_important') => {
-      feedback.mutate({ briefItemId, type });
+    (syncedItemId: number, type: 'important' | 'not_important') => {
+      feedback.mutate({ syncedItemId, type });
     },
     [feedback],
   );
@@ -106,7 +106,11 @@ export function BriefView() {
         </Card>
       ) : (
         <div className="space-y-8">
-          <SwipeDeck key={data.id} items={data.items} onDecision={handleDecision} />
+          <SwipeDeck
+            key={data.id}
+            items={data.items.filter((item) => item.feedback === null)}
+            onDecision={handleDecision}
+          />
           <ReviewedList
             items={data.items}
             onFeedback={handleFeedback}

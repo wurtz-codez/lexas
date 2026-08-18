@@ -20,7 +20,7 @@ export function ReviewedList({
   feedbackPending,
 }: {
   items: BriefItemDetail[];
-  onFeedback: (briefItemId: number, type: 'important' | 'not_important') => void;
+  onFeedback: (syncedItemId: number, type: 'important' | 'not_important') => void;
   feedbackPending: boolean;
 }) {
   const reviewed = items
@@ -81,7 +81,7 @@ export function ReviewedList({
                 <div className="flex shrink-0 items-center gap-1">
                   <button
                     type="button"
-                    onClick={() => onFeedback(item.id, 'important')}
+                    onClick={() => onFeedback(item.synced_item_id, 'important')}
                     disabled={feedbackPending}
                     aria-label="Mark important"
                     className={cn(
@@ -93,7 +93,7 @@ export function ReviewedList({
                   </button>
                   <button
                     type="button"
-                    onClick={() => onFeedback(item.id, 'not_important')}
+                    onClick={() => onFeedback(item.synced_item_id, 'not_important')}
                     disabled={feedbackPending}
                     aria-label="Mark not important"
                     className={cn(

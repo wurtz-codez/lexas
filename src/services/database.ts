@@ -91,7 +91,7 @@ CREATE INDEX IF NOT EXISTS idx_brief_items_brief ON brief_items(brief_id);
 
 CREATE TABLE IF NOT EXISTS feedback (
     id             INTEGER PRIMARY KEY AUTOINCREMENT,
-    brief_item_id  INTEGER NOT NULL REFERENCES brief_items(id) ON DELETE CASCADE,
+    synced_item_id INTEGER NOT NULL REFERENCES synced_items(id) ON DELETE CASCADE,
     feedback_type  TEXT NOT NULL,
     created_at     TEXT DEFAULT CURRENT_TIMESTAMP
 );
@@ -131,6 +131,33 @@ function runMigrations(database: Database.Database): void {
 
   if (!briefItemsCols.some((c) => c.name === 'suggested_action')) {
     database.exec("ALTER TABLE brief_items ADD COLUMN suggested_action TEXT");
+  }
+
+  // Feedback used to reference brief_items(id), which are destroyed on every brief
+  // regeneration (cascade delete) — that wiped user votes on refresh. Re-key to
+  // synced_items(id) so "already reviewed" survives regenerate. Feedback is keyed
+  // to the MAIL, not the transient brief row.
+  const feedbackCols = database.prepare(
+    "SELECT name FROM pragma_table_info('feedback')",
+  ).all() as { name: string }[];
+
+  if (feedbackCols.some((c) => c.name === 'brief_item_id')) {
+    database.exec(`
+      CREATE TABLE feedback_new (
+        id             INTEGER PRIMARY KEY AUTOINCREMENT,
+        synced_item_id INTEGER NOT NULL REFERENCES synced_items(id) ON DELETE CASCADE,
+        feedback_type  TEXT NOT NULL,
+        created_at     TEXT DEFAULT CURRENT_TIMESTAMP
+      )
+    `);
+    database.exec(`
+      INSERT INTO feedback_new (synced_item_id, feedback_type, created_at)
+      SELECT bi.synced_item_id, f.feedback_type, f.created_at
+      FROM feedback f
+      JOIN brief_items bi ON bi.id = f.brief_item_id
+    `);
+    database.exec('DROP TABLE feedback');
+    database.exec('ALTER TABLE feedback_new RENAME TO feedback');
   }
 
   const itemLinksTable = database.prepare(

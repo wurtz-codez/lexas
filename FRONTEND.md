@@ -113,6 +113,8 @@ Key shapes:
 ### 5. Brief view (home hub) — swipe deck
 - `BriefView` (`brief-view.tsx`) — header ("Your Brief" + formatted date) with a **Refresh** button (spinner while pending). Renders `<SwipeDeck key={data.id}>` so the deck resets **only when a new brief is generated**, not on feedback refetches.
 
+**Deck vs Reviewed split:** the deck is fed **only un-reviewed items** (`data.items.filter(item => item.feedback === null)`). Once an item has any feedback it leaves the deck and appears in the **Reviewed** list below — so the deck always shows new mails to triage, never ones already decided. Because feedback is keyed to the mail, **Refresh keeps this split intact**: already-reviewed mails stay in Reviewed (they don't come back into the deck), while skipped + newly-synced mails populate the deck.
+
 **Deck ordering:** the most important mail is on top. `SwipeDeck` builds its queue from `data.items` (rank-ascending from `getLatest`) reversed via `orderedQueue()` (`sort((a, b) => b.rank - a.rank)`), so **rank 1 is the first card** you see and swipe, followed by progressively less important ones.
 
 **Components (`features/brief/components/`):**
@@ -152,7 +154,7 @@ Key shapes:
 
 ## Frontend Gotchas (read before touching the UI)
 
-- **Feedback is an append-only log.** `feedback.submit` keeps both rows on an up→down flip; only consecutive identical taps are suppressed. `brief.getLatest()` already returns the *latest* row per item — always render from `item.feedback`, never aggregate raw feedback rows on the client.
+- **Feedback is an append-only log keyed to the MAIL (`synced_item_id`).** `feedback.submit` keeps both rows on an up→down flip; only consecutive identical taps are suppressed. Keying to the mail (not the transient `brief_item`) is what makes "already reviewed" **survive Refresh** — regenerating the brief no longer wipes your votes. `brief.getLatest()` returns the *latest* row per item — always render from `item.feedback`, never aggregate raw feedback rows on the client.
 - **`todayLocal()` is the LOCAL day; the engine matches a UTC window.** `brief.generate(date, tzOffsetMinutes)` (renderer passes `new Date().getTimezoneOffset()`) and `context-engine.ts`'s `localDayWindowUtc` convert the local calendar day into a `[start, end)` UTC window over `occurred_at`. This fixed a real bug where a mail sent early morning IST (UTC date = previous day) was dropped from today's brief. If items are missing again, check `localDayWindowUtc` and the renderer's offset first.
 - **Deck ordering:** `SwipeDeck` shows the most important card on top. It reverses `data.items` (rank-ascending) via `orderedQueue()` in `swipe-deck.tsx` — if the deck ever shows the wrong card first, check that helper and the `queue[queue.length-1]` top-card convention.
 - **Deck remount semantics:** `SwipeDeck` is keyed by `data.id`, so the deck resets only on a *new* brief. TanStack refetches (e.g. after feedback) preserve the queue but sync feedback state onto remaining cards via a merge effect.

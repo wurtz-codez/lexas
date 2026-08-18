@@ -95,11 +95,13 @@ CREATE INDEX IF NOT EXISTS idx_brief_items_brief ON brief_items(brief_id);
 
 -- ============================================================
 -- FEEDBACK: closes the personalization loop
+-- Append-only log keyed to the MAIL (synced_item_id) so "already
+-- reviewed" survives brief regeneration.
 -- ============================================================
 
 CREATE TABLE IF NOT EXISTS feedback (
     id             INTEGER PRIMARY KEY AUTOINCREMENT,
-    brief_item_id  INTEGER NOT NULL REFERENCES brief_items(id) ON DELETE CASCADE,
+    synced_item_id INTEGER NOT NULL REFERENCES synced_items(id) ON DELETE CASCADE,
     feedback_type  TEXT NOT NULL,
     created_at     TEXT DEFAULT CURRENT_TIMESTAMP
 );

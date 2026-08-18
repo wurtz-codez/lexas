@@ -47,9 +47,9 @@ export function useCreateEvent() {
 export function useSubmitFeedback() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: ({ briefItemId, type }: { briefItemId: number; type: FeedbackType }) =>
-      window.electron.feedback.submit(briefItemId, type),
-    onMutate: async ({ briefItemId, type }) => {
+    mutationFn: ({ syncedItemId, type }: { syncedItemId: number; type: FeedbackType }) =>
+      window.electron.feedback.submit(syncedItemId, type),
+    onMutate: async ({ syncedItemId, type }) => {
       await queryClient.cancelQueries({ queryKey: BRIEF_KEY });
       const previous = queryClient.getQueryData<BriefDetail | null>(BRIEF_KEY);
       queryClient.setQueryData<BriefDetail | null>(BRIEF_KEY, (old) => {
@@ -57,7 +57,7 @@ export function useSubmitFeedback() {
         return {
           ...old,
           items: old.items.map((it) =>
-            it.id === briefItemId
+            it.synced_item_id === syncedItemId
               ? { ...it, feedback: { type, created_at: new Date().toISOString() } }
               : it,
           ),

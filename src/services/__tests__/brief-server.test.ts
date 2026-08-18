@@ -23,7 +23,7 @@ type Row = {
 };
 
 type FeedbackRow = {
-  brief_item_id: number;
+  synced_item_id: number;
   feedback_type: string;
   created_at: string;
 };
@@ -128,9 +128,9 @@ describe('getLatestBrief', () => {
         },
       ],
       feedback: [
-        { brief_item_id: 11, feedback_type: 'not_important', created_at: '2026-07-21T09:05:00Z' },
-        { brief_item_id: 11, feedback_type: 'important', created_at: '2026-07-21T09:02:00Z' },
-        { brief_item_id: 12, feedback_type: 'dismissed', created_at: '2026-07-21T11:00:00Z' },
+        { synced_item_id: 1, feedback_type: 'not_important', created_at: '2026-07-21T09:05:00Z' },
+        { synced_item_id: 1, feedback_type: 'important', created_at: '2026-07-21T09:02:00Z' },
+        { synced_item_id: 2, feedback_type: 'dismissed', created_at: '2026-07-21T11:00:00Z' },
       ],
     });
 
