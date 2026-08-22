@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, afterEach } from 'vitest';
 import type Database from 'better-sqlite3';
+import type { CalendarEventDetail } from '@/types';
 import { getValidAccessToken } from '../oauth-server';
 import { AuthError } from '../gmail-sync';
 
@@ -105,5 +106,33 @@ describe('createCalendarEvent', () => {
       createCalendarEvent(db, { ...VALID_DETAILS, start: 'not-a-date' }),
     ).rejects.toThrow(/valid start\/end/);
     expect(getValidAccessToken).not.toHaveBeenCalled();
+  });
+});
+
+describe('listDayCalendarEvents', () => {
+  it('returns calendar events within the local-day UTC window', async () => {
+    const rows: CalendarEventDetail[] = [
+      {
+        id: 1, title: 'Meet', snippet: null, organizer_email: 'a@b.com',
+        occurred_at: '2026-08-18T19:00:00.000Z', ends_at: '2026-08-18T20:00:00.000Z',
+      },
+    ];
+    const db = {
+      prepare: vi.fn().mockImplementation((sql: string) => {
+        if (String(sql).includes('FROM synced_items')) {
+          return { all: vi.fn(() => rows) };
+        }
+        return { all: vi.fn(() => []) };
+      }),
+    } as unknown as Database.Database;
+
+    const { listDayCalendarEvents } = await import('../calendar-server');
+    const result = listDayCalendarEvents(db, '2026-08-19', -330);
+
+    expect(result).toEqual(rows);
+
+    const prepare = db.prepare as ReturnType<typeof vi.fn>;
+    const all = prepare.mock.results[0].value.all as ReturnType<typeof vi.fn>;
+    expect(all).toHaveBeenCalledWith('2026-08-18T18:30:00.000Z', '2026-08-19T18:30:00.000Z');
   });
 });

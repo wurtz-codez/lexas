@@ -1,6 +1,7 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import type Database from 'better-sqlite3';
 import {
+  listCalendars,
   listCalendarEvents,
   parseCalendarEvent,
   syncCalendar,
@@ -29,6 +30,17 @@ function mockListResponse(events: Record<string, unknown>[], nextPageToken?: str
     headers: { 'Content-Type': 'application/json' },
   });
 }
+
+function mockCalendarList(calendars: { id: string; accessRole?: string }[]): Response {
+  return new Response(
+    JSON.stringify({
+      items: calendars.map((c) => ({ id: c.id, accessRole: c.accessRole ?? 'owner' })),
+    }),
+    { status: 200, headers: { 'Content-Type': 'application/json' } },
+  );
+}
+
+const CAL = [{ id: 'cal1' }];
 
 interface CalendarMockStmt {
   _runs: {
@@ -66,38 +78,92 @@ function createMockDb(): { db: Database.Database; stmt: CalendarMockStmt } {
   return { db, stmt };
 }
 
+describe('listCalendars', () => {
+  beforeEach(() => {
+    vi.spyOn(globalThis, 'fetch').mockReset();
+  });
+
+  it('returns only owner/writer calendars with an id', async () => {
+    vi.spyOn(globalThis, 'fetch').mockResolvedValue(
+      mockCalendarList([
+        { id: 'primary', accessRole: 'owner' },
+        { id: 'f1', accessRole: 'owner' },
+        { id: 'holidays', accessRole: 'reader' },
+      ]),
+    );
+
+    const cals = await listCalendars('fake-token');
+
+    expect(cals).toEqual([{ id: 'primary' }, { id: 'f1' }]);
+  });
+
+  it('uses Bearer token in Authorization header', async () => {
+    vi.spyOn(globalThis, 'fetch').mockResolvedValue(mockCalendarList([]));
+
+    await listCalendars('my-access-token');
+
+    const opts = (fetch as ReturnType<typeof vi.fn>).mock.calls[0][1] as RequestInit;
+    expect(opts.headers).toEqual({ Authorization: 'Bearer my-access-token' });
+  });
+
+  it('throws AuthError on 401', async () => {
+    vi.spyOn(globalThis, 'fetch').mockResolvedValue(
+      new Response('Unauthorized', { status: 401 }),
+    );
+
+    await expect(listCalendars('expired-token')).rejects.toThrow(AuthError);
+  });
+
+  it('throws generic error on non-401 failure', async () => {
+    vi.spyOn(globalThis, 'fetch').mockResolvedValue(
+      new Response('Rate limited', { status: 429 }),
+    );
+
+    await expect(listCalendars('fake-token')).rejects.toThrow('Calendar list failed: 429');
+  });
+});
+
 describe('listCalendarEvents', () => {
   beforeEach(() => {
     vi.spyOn(globalThis, 'fetch').mockReset();
   });
 
-  it('calls the correct Calendar API endpoint', async () => {
+  it('calls the per-calendar events endpoint', async () => {
     vi.spyOn(globalThis, 'fetch').mockResolvedValue(mockListResponse([]));
 
-    await listCalendarEvents('fake-token');
+    await listCalendarEvents('fake-token', CAL);
 
     const url = (fetch as ReturnType<typeof vi.fn>).mock.calls[0][0] as URL;
-    expect(url.href).toContain('www.googleapis.com/calendar/v3/calendars/primary/events');
+    expect(url.href).toContain('www.googleapis.com/calendar/v3/calendars/cal1/events');
   });
 
-  it('passes timeMin, timeMax, singleEvents, and orderBy params', async () => {
+  it('passes singleEvents, orderBy, and a wide time window', async () => {
     vi.spyOn(globalThis, 'fetch').mockResolvedValue(mockListResponse([]));
 
-    await listCalendarEvents('fake-token');
+    await listCalendarEvents('fake-token', CAL);
 
     const url = (fetch as ReturnType<typeof vi.fn>).mock.calls[0][0] as URL;
     expect(url.searchParams.get('singleEvents')).toBe('true');
     expect(url.searchParams.get('orderBy')).toBe('startTime');
     expect(url.searchParams.get('maxResults')).toBe('50');
-    expect(url.searchParams.get('timeMin')).toBeTruthy();
-    expect(url.searchParams.get('timeMax')).toBeTruthy();
-    expect(new Date(url.searchParams.get('timeMin')!).getTime()).toBeGreaterThan(Date.now() - 1000);
+
+    const now = Date.now();
+    const timeMinStr = url.searchParams.get('timeMin');
+    const timeMaxStr = url.searchParams.get('timeMax');
+    expect(timeMinStr).toBeTruthy();
+    expect(timeMaxStr).toBeTruthy();
+    const min = new Date(timeMinStr as string).getTime();
+    const max = new Date(timeMaxStr as string).getTime();
+    // timeMin reaches back 24h so earlier-today events are included.
+    expect(min).toBeGreaterThan(now - 25 * 60 * 60 * 1000);
+    expect(min).toBeLessThan(now - 23 * 60 * 60 * 1000);
+    expect(max).toBeGreaterThan(now + 47 * 60 * 60 * 1000);
   });
 
   it('uses Bearer token in Authorization header', async () => {
     vi.spyOn(globalThis, 'fetch').mockResolvedValue(mockListResponse([]));
 
-    await listCalendarEvents('my-access-token');
+    await listCalendarEvents('my-access-token', CAL);
 
     const opts = (fetch as ReturnType<typeof vi.fn>).mock.calls[0][1] as RequestInit;
     expect(opts.headers).toEqual({ Authorization: 'Bearer my-access-token' });
@@ -114,13 +180,28 @@ describe('listCalendarEvents', () => {
         Array.from({ length: 20 }, (_, i) => ({ id: `page2-${i}`, summary: `Event ${i}` })),
       ));
 
-    const events = await listCalendarEvents('fake-token');
+    const events = await listCalendarEvents('fake-token', CAL);
 
     expect(events.length).toBe(70);
     expect(fetch).toHaveBeenCalledTimes(2);
 
     const secondUrl = (fetch as ReturnType<typeof vi.fn>).mock.calls[1][0] as URL;
     expect(secondUrl.searchParams.get('pageToken')).toBe('token-2');
+  });
+
+  it('fetches from every calendar and tags events with their calendar id', async () => {
+    const fetchMock = vi.spyOn(globalThis, 'fetch');
+    fetchMock
+      .mockResolvedValueOnce(mockListResponse([{ id: 'a', summary: 'A' }]))
+      .mockResolvedValueOnce(mockListResponse([{ id: 'b', summary: 'B' }]));
+
+    const events = await listCalendarEvents('fake-token', [{ id: 'cal1' }, { id: 'cal2' }]);
+
+    expect(events).toEqual([
+      { event: { id: 'a', summary: 'A' }, calendarId: 'cal1' },
+      { event: { id: 'b', summary: 'B' }, calendarId: 'cal2' },
+    ]);
+    expect(fetch).toHaveBeenCalledTimes(2);
   });
 
   it('stops at MAX_EVENTS (200) cap', async () => {
@@ -143,7 +224,7 @@ describe('listCalendarEvents', () => {
         'more',
       ));
 
-    const events = await listCalendarEvents('fake-token');
+    const events = await listCalendarEvents('fake-token', CAL);
 
     expect(events.length).toBe(200);
     expect(fetch).toHaveBeenCalledTimes(4);
@@ -154,7 +235,7 @@ describe('listCalendarEvents', () => {
       new Response('Unauthorized', { status: 401 }),
     );
 
-    await expect(listCalendarEvents('expired-token')).rejects.toThrow(AuthError);
+    await expect(listCalendarEvents('expired-token', CAL)).rejects.toThrow(AuthError);
   });
 
   it('throws generic error on non-401 failure', async () => {
@@ -162,10 +243,10 @@ describe('listCalendarEvents', () => {
       new Response('Rate limited', { status: 429 }),
     );
 
-    await expect(listCalendarEvents('fake-token')).rejects.toThrow('Calendar list failed: 429');
+    await expect(listCalendarEvents('fake-token', CAL)).rejects.toThrow('Calendar list failed: 429');
   });
 
-  it('returns empty array when no events match time range', async () => {
+  it('returns empty array when no events match the range', async () => {
     vi.spyOn(globalThis, 'fetch').mockResolvedValue(
       new Response(JSON.stringify({ items: [] }), {
         status: 200,
@@ -173,7 +254,7 @@ describe('listCalendarEvents', () => {
       }),
     );
 
-    const events = await listCalendarEvents('fake-token');
+    const events = await listCalendarEvents('fake-token', CAL);
     expect(events).toEqual([]);
   });
 });
@@ -253,10 +334,11 @@ describe('syncCalendar', () => {
     vi.spyOn(globalThis, 'fetch').mockReset();
   });
 
-  it('writes events into synced_items with source=calendar and ends_at populated', async () => {
-    vi.spyOn(globalThis, 'fetch').mockResolvedValue(
-      mockListResponse([TIMED_EVENT]),
-    );
+  it('fetches the calendar list, then each calendar, and writes events', async () => {
+    const fetchMock = vi.spyOn(globalThis, 'fetch');
+    fetchMock
+      .mockResolvedValueOnce(mockCalendarList([{ id: 'cal1' }]))
+      .mockResolvedValueOnce(mockListResponse([TIMED_EVENT]));
 
     const { db, stmt } = createMockDb();
     const result = await syncCalendar(db, async () => 'test-token');
@@ -265,7 +347,7 @@ describe('syncCalendar', () => {
     expect(db.prepare).toHaveBeenCalledWith(expect.stringContaining('INSERT OR IGNORE INTO synced_items'));
 
     expect(stmt._runs[0].source).toBe('calendar');
-    expect(stmt._runs[0].external_id).toBe('evt1');
+    expect(stmt._runs[0].external_id).toBe('cal1/evt1');
     expect(stmt._runs[0].title).toBe('Team Standup');
     expect(stmt._runs[0].sender_email).toBe('rahul@example.com');
     expect(stmt._runs[0].occurred_at).toBe('2024-06-10T16:00:00.000Z');
@@ -274,8 +356,11 @@ describe('syncCalendar', () => {
 
   it('does not duplicate rows on re-sync (INSERT OR IGNORE)', async () => {
     const fetchMock = vi.spyOn(globalThis, 'fetch');
+    // Two full syncs: each needs calendarList + events.
     fetchMock
+      .mockResolvedValueOnce(mockCalendarList([{ id: 'cal1' }]))
       .mockResolvedValueOnce(mockListResponse([TIMED_EVENT]))
+      .mockResolvedValueOnce(mockCalendarList([{ id: 'cal1' }]))
       .mockResolvedValueOnce(mockListResponse([TIMED_EVENT]));
 
     const { db } = createMockDb();
@@ -286,7 +371,10 @@ describe('syncCalendar', () => {
   });
 
   it('calls getValidAccessToken to obtain the access token', async () => {
-    vi.spyOn(globalThis, 'fetch').mockResolvedValue(mockListResponse([]));
+    const fetchMock = vi.spyOn(globalThis, 'fetch');
+    fetchMock
+      .mockResolvedValueOnce(mockCalendarList([{ id: 'cal1' }]))
+      .mockResolvedValueOnce(mockListResponse([]));
 
     const { db } = createMockDb();
     const getToken = vi.fn().mockResolvedValue('fresh-token');
@@ -315,9 +403,8 @@ describe('syncCalendar', () => {
     });
 
     fetchMock
-      .mockResolvedValueOnce(new Response('Unauthorized', { status: 401 }));
-
-    fetchMock
+      .mockResolvedValueOnce(new Response('Unauthorized', { status: 401 }))
+      .mockResolvedValueOnce(mockCalendarList([{ id: 'cal1' }]))
       .mockResolvedValueOnce(mockListResponse(
         Array.from({ length: 30 }, (_, i) => ({ id: `evt-${i}`, summary: `Event ${i}` })),
       ));
@@ -336,5 +423,28 @@ describe('syncCalendar', () => {
     expect(tokenCalls).toEqual(['expired-token', 'refreshed-token']);
     expect(result.synced).toBe(30);
     expect(stmt._runs).toHaveLength(30);
+  });
+
+  it('uses the primary calendar when no writable calendars exist', async () => {
+    // listCalendars returns only reader calendars -> no events fetched.
+    const fetchMock = vi.spyOn(globalThis, 'fetch');
+    fetchMock.mockResolvedValueOnce(mockCalendarList([{ id: 'holidays', accessRole: 'reader' }]));
+
+    const { db } = createMockDb();
+    const result = await syncCalendar(db, async () => 'test-token');
+
+    expect(result.synced).toBe(0);
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+
+  it('defaults to the primary calendar when calendar list returns nothing', async () => {
+    // Kept for clarity: an empty calendar list means no events are synced.
+    const fetchMock = vi.spyOn(globalThis, 'fetch');
+    fetchMock.mockResolvedValueOnce(mockCalendarList([]));
+
+    const { db } = createMockDb();
+    const result = await syncCalendar(db, async () => 'test-token');
+
+    expect(result.synced).toBe(0);
   });
 });

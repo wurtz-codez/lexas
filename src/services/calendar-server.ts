@@ -3,9 +3,25 @@ import type Database from 'better-sqlite3';
 import { getDb } from './database';
 import { getValidAccessToken } from './oauth-server';
 import { AuthError } from './gmail-sync';
-import type { CreateEventRequest, CreateEventResult } from '@/types';
+import { localDayWindowUtc } from './context-engine';
+import type { CalendarEventDetail, CreateEventRequest, CreateEventResult } from '@/types';
 
 const CALENDAR_API = 'https://www.googleapis.com/calendar/v3/calendars/primary/events';
+
+export function listDayCalendarEvents(
+  db: Database.Database,
+  date: string,
+  tzOffsetMinutes: number,
+): CalendarEventDetail[] {
+  const { startIso, endIso } = localDayWindowUtc(date, tzOffsetMinutes);
+
+  return db.prepare(`
+    SELECT id, title, snippet, sender_email AS organizer_email, occurred_at, ends_at
+    FROM synced_items
+    WHERE source = 'calendar' AND occurred_at >= ? AND occurred_at < ?
+    ORDER BY occurred_at ASC
+  `).all(startIso, endIso) as CalendarEventDetail[];
+}
 
 export async function createCalendarEvent(
   db: Database.Database,
@@ -65,6 +81,13 @@ export function registerCalendarHandlers(): void {
     'calendar:createEvent',
     async (_event, details: CreateEventRequest): Promise<CreateEventResult> => {
       return createCalendarEvent(getDb(), details);
+    },
+  );
+
+  ipcMain.handle(
+    'calendar:getDayEvents',
+    (_event, date: string, tzOffsetMinutes: number): CalendarEventDetail[] => {
+      return listDayCalendarEvents(getDb(), date, tzOffsetMinutes);
     },
   );
 }

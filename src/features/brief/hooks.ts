@@ -44,6 +44,15 @@ export function useCreateEvent() {
   });
 }
 
+export function useDayCalendarEvents(date: string, enabled: boolean) {
+  return useQuery({
+    queryKey: ['calendar', 'day', date],
+    queryFn: () =>
+      window.electron.calendar.getDayEvents(date, new Date().getTimezoneOffset()),
+    enabled,
+  });
+}
+
 export function useSubmitFeedback() {
   const queryClient = useQueryClient();
   return useMutation({

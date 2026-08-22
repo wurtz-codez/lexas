@@ -27,5 +27,6 @@ contextBridge.exposeInMainWorld('electron', {
   },
   calendar: {
     createEvent: (details: CreateEventRequest) => ipcRenderer.invoke('calendar:createEvent', details),
+    getDayEvents: (date: string, tzOffsetMinutes: number) => ipcRenderer.invoke('calendar:getDayEvents', date, tzOffsetMinutes),
   },
 });

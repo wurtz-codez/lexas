@@ -128,6 +128,8 @@ lexas/
 - [x] **Reviewed section** (`reviewed-list.tsx`) — already-decided mails shown below the deck with editable thumbs; deck shows only un-reviewed (new + skipped) mails
 - [x] Feedback re-keyed from `brief_item_id` → `synced_item_id` (migration) so votes survive brief regeneration on refresh
 - [x] Brief is **emails-only for now** — calendar events excluded from generation (`context-engine.ts`) and `getLatest` (`brief-server.ts`); still synced/correlated but not rendered as cards
+- [x] **Calendar popup** (`calendar-events-button.tsx` + `calendar:getDayEvents`) — header button opens a scrollable dialog listing the day's calendar events (uses `localDayWindowUtc`)
+- [x] **Multi-calendar sync** — `syncCalendar` now fetches the calendarList and syncs all owner/writer calendars (e.g. a separate "Formula 1" calendar), not just primary; `timeMin = now − 24h` so earlier-today events aren't dropped; `external_id` prefixed with calendar id to avoid cross-calendar collisions
 
 ### Not Yet Implemented
 - [ ] Application-specific business logic
@@ -156,7 +158,7 @@ lexas/
 ## Git State
 
 - **Branch:** main
-- **Commits:** 18 (fix: Removed the reset option and fixed the refresh button issue which was causing the system to create a whole new brief over and over again.) [latest: `5a5cb91`]
+- **Commits:** 19 (fix: Removed calendar events from the brief card view and not treating them like mails.) [latest: `0b5592d`]
 - **Last Updated:** 2026-08-19
 
 ---

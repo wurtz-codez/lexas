@@ -66,8 +66,9 @@ Exposed in `src/preload.ts`, typed in the `Window` global of `src/types/index.ts
 |             | `runAll()`                          | `RunAllSyncResult`                   | `sync-server.ts` (best-effort)      |
 | `brief`     | `generate(date, tzOffsetMinutes)`   | `BriefResult`                        | `brief-server.ts` / `context-engine`|
 |             | `getLatest()`                       | `BriefDetail \| null`                | `brief-server.ts`                   |
-| `feedback`  | `submit(briefItemId, type)`         | `void`                               | `feedback-server.ts`                |
+| `feedback`  | `submit(syncedItemId, type)`        | `void`                               | `feedback-server.ts`                |
 | `calendar`  | `createEvent(details)`              | `CreateEventResult`                  | `calendar-server.ts`                |
+|             | `getDayEvents(date, tzOffsetMinutes)` | `CalendarEventDetail[]`            | `calendar-server.ts`                |
 
 Key shapes:
 
@@ -115,7 +116,7 @@ Key shapes:
 
 **Deck vs Reviewed split:** the deck is fed **only un-reviewed items** (`data.items.filter(item => item.feedback === null)`). Once an item has any feedback it leaves the deck and appears in the **Reviewed** list below — so the deck always shows new mails to triage, never ones already decided. Because feedback is keyed to the mail, **Refresh keeps this split intact**: already-reviewed mails stay in Reviewed (they don't come back into the deck), while skipped + newly-synced mails populate the deck.
 
-> **Emails only (for now):** calendar events are **excluded from the brief entirely** — the brief engine's item query filters `si.source = 'email'` (`context-engine.ts`) and `getLatest` filters the same (`brief-server.ts`). Calendar events are still synced/stored and correlated; they just aren't rendered as cards. (Reintroducing them elsewhere is pending a decision on where.)
+> **Emails only in the deck; calendar in a popup:** calendar events are **excluded from the brief cards** (brief engine + `getLatest` filter `si.source = 'email'`, plus a renderer guard). They're surfaced via the **Calendar** button in the header → a popup (`calendar-events-button.tsx`) listing the day's events, internally scrollable. Calendar events are still synced/stored and correlated.
 
 **Deck ordering:** the most important mail is on top. `SwipeDeck` builds its queue from `data.items` (rank-ascending from `getLatest`) reversed via `orderedQueue()` (`sort((a, b) => b.rank - a.rank)`), so **rank 1 is the first card** you see and swipe, followed by progressively less important ones.
 
@@ -124,7 +125,8 @@ Key shapes:
 - **`action-dock.tsx`** — frosted dock: Archive (left), Undo (center), Keep (right).
 - **`add-to-calendar-button.tsx`** — Action Engine affordance. Rendered on the front card only when `item.item.source === 'email'` **and** `item.suggested_action` exists (Gemini-detected meeting/task). Opens a confirmation `Dialog` with **editable title + start/end** (local-time `datetime-local`, converted to/from ISO), Cancel/Add. On confirm → `calendar.createEvent` → success disables the button ("Added") + writes the `calendar_actions` row backend-side. `onPointerDown` stops propagation so it never starts a card drag.
 - **`reviewed-list.tsx`** — "Reviewed" section rendered below the deck: every item with `item.feedback !== null` (already swiped/decided this brief), sorted by most recent feedback first. Each row shows source, title, time/sender, the current vote chip ("Kept"/"Archived"), and **thumbs to change the vote** (appends a new `feedback` row; latest-wins). Hidden when nothing has been reviewed. Changes go through the same `useSubmitFeedback` optimistic path as swipes.
-- **`swipe-deck.tsx`** — owns the local `queue`/`history`/`counts`. Decisions call `onDecision(item, action)` (mapped in `BriefView` to `feedback.submit(..., 'important'|'not_important')`); on failure the card is returned to the queue. Keyboard: `←`/`H` archive, `→`/`L` keep, `⌘Z`/`Ctrl+Z` undo (ignored while an `INPUT`/`TEXTAREA`/`SELECT` is focused, e.g. the calendar modal). Zero state = **"All triaged"** card with kept/archived counts + Reset (rebuilds the queue in importance order).
+- **`calendar-events-button.tsx`** — header **Calendar** button → `Dialog` popup fetching the day's calendar events via `calendar.getDayEvents(date, tzOffsetMinutes)` (uses the same `localDayWindowUtc`). Internally scrollable list (`max-h-[60vh] overflow-y-auto`): time range pill, title, snippet, organizer. Loading / error / empty ("No calendar events for this day.") states.
+- **`swipe-deck.tsx`** — owns the local `queue`/`history`/`counts`. Decisions call `onDecision(item, action)` (mapped in `BriefView` to `feedback.submit(..., 'important'|'not_important')`); on failure the card is returned to the queue. Keyboard: `←`/`H` archive, `→`/`L` keep, `⌘Z`/`Ctrl+Z` undo (ignored while an `INPUT`/`TEXTAREA`/`SELECT` is focused, e.g. the calendar modal). Zero state = **"All triaged"** card with kept/archived counts.
 
 > **Product decision:** the brief is **triage via swipe deck** (deliberate user choice). Every card gets a keep/archive verdict; keep records `important`, archive records `not_important`. A ranked-highlights list was briefly tried and reverted in favor of this interaction.
 
@@ -146,11 +148,12 @@ Key shapes:
 3. **Onboarding** → 5-step wizard captures name, roles, projects, VIP contacts, focus summary. Skippable; editable later in Settings.
 4. **Home** → `BriefView`. If no brief has been generated yet, see "No brief yet".
 5. **Refresh** → button runs `sync.runAll()` (Gmail + Calendar + correlation, best-effort) then `brief.generate(today)` then refetches. Partial sync failures surface as `Sync had issues: <specific step message>`.
-6. **Triage** → the most important mail is on top. Swipe each card **right/→/L** to keep (records `important`), **left/←/H** to archive (records `not_important`). Undo with `⌘Z` or the dock button. When the queue is empty, see "All triaged" with counts + Reset.
-7. **Add to Calendar (action engine)** → on email cards where Gemini detected a meeting/task, tap **"Add to Calendar"**, review/edit title + start/end in the modal (nothing is auto-created), confirm → event is created in Google Calendar and the card's button flips to "Added".
-8. **Review votes** → below the deck, the **Reviewed** section lists everything you've already decided. Tap a thumb to flip your vote (records a new append-only row; latest wins).
-9. **Adjust context** → Settings gear → ContextEditor → Save; the next generated brief uses it.
-10. **Feedback loop** → swipes and reviewed-vote changes write to the append-only `feedback` table; `brief.getLatest()` returns the latest per item so the UI never shows a stale vote.
+6. **Triage** → the most important mail is on top. Swipe each card **right/→/L** to keep (records `important`), **left/←/H** to archive (records `not_important`). Undo with `⌘Z` or the dock button. When the queue is empty, see "All triaged" with counts.
+7. **Calendar** → tap the **Calendar** button in the header for a popup of the day's events (scrollable); events live here, not in the card deck.
+8. **Add to Calendar (action engine)** → on email cards where Gemini detected a meeting/task, tap **"Add to Calendar"**, review/edit title + start/end in the modal (nothing is auto-created), confirm → event is created in Google Calendar and the card's button flips to "Added".
+9. **Review votes** → below the deck, the **Reviewed** section lists everything you've already decided. Tap a thumb to flip your vote (records a new append-only row; latest wins).
+10. **Adjust context** → Settings gear → ContextEditor → Save; the next generated brief uses it.
+11. **Feedback loop** → swipes and reviewed-vote changes write to the append-only `feedback` table; `brief.getLatest()` returns the latest per item so the UI never shows a stale vote.
 
 ---
 

@@ -49,7 +49,7 @@ type InputLink = {
 // is the wrong filter — a mail sent 1am IST on Aug 19 has a UTC date of Aug 18.
 // Instead compute the [start, end) UTC window covering the local day using the
 // renderer's timezone offset (minutes to add to local time to get UTC).
-function localDayWindowUtc(date: string, tzOffsetMinutes: number): { startIso: string; endIso: string } {
+export function localDayWindowUtc(date: string, tzOffsetMinutes: number): { startIso: string; endIso: string } {
   const [y, m, d] = date.split('-').map(Number);
   const startMs = Date.UTC(y, m - 1, d) + tzOffsetMinutes * 60_000;
   const endMs = Date.UTC(y, m - 1, d + 1) + tzOffsetMinutes * 60_000;

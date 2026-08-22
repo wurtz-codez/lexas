@@ -69,6 +69,15 @@ export type CreateEventResult = {
   event_id: string;
 };
 
+export type CalendarEventDetail = {
+  id: number;
+  title: string;
+  snippet: string | null;
+  organizer_email: string | null;
+  occurred_at: string;
+  ends_at: string | null;
+};
+
 export type BriefItemDetail = {
   id: number;
   synced_item_id: number;
@@ -133,6 +142,7 @@ declare global {
       };
       calendar: {
         createEvent: (details: CreateEventRequest) => Promise<CreateEventResult>;
+        getDayEvents: (date: string, tzOffsetMinutes: number) => Promise<CalendarEventDetail[]>;
       };
     };
   }

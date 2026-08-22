@@ -6,6 +6,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { useBrief, useRefreshBrief, useSubmitFeedback, todayLocal } from '@/features/brief/hooks';
 import { SwipeDeck } from '@/features/brief/components/swipe-deck';
 import { ReviewedList } from '@/features/brief/components/reviewed-list';
+import { CalendarEventsButton } from '@/features/brief/components/calendar-events-button';
 import type { BriefItemDetail } from '@/types';
 import type { TriageAction } from '@/features/brief/components/deck-types';
 
@@ -64,15 +65,18 @@ export function BriefView() {
           <h2 className="text-xl font-semibold tracking-tight">Your Brief</h2>
           <p className="text-sm text-muted-foreground">{dateLabel}</p>
         </div>
-        <Button
-          onClick={handleRefresh}
-          disabled={refresh.isPending}
-          variant="outline"
-          className="gap-2"
-        >
-          {refresh.isPending ? <Loader2 className="size-4 animate-spin" /> : <RefreshCw className="size-4" />}
-          {refresh.isPending ? 'Refreshing…' : 'Refresh'}
-        </Button>
+        <div className="flex items-center gap-2">
+          <CalendarEventsButton />
+          <Button
+            onClick={handleRefresh}
+            disabled={refresh.isPending}
+            variant="outline"
+            className="gap-2"
+          >
+            {refresh.isPending ? <Loader2 className="size-4 animate-spin" /> : <RefreshCw className="size-4" />}
+            {refresh.isPending ? 'Refreshing…' : 'Refresh'}
+          </Button>
+        </div>
       </div>
 
       {isLoading ? (
